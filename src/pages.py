@@ -1,7 +1,8 @@
-from nicegui import ui
+from nicegui import ui, run
 import kagglehub
 import os
 import random
+import asyncio
 from src.app_state import app_state, Question
 from src.open_router import open_router
 
@@ -18,24 +19,23 @@ def model_page():
     
  
 def kaggle_page():      
-    def update_class_select(e): 
-        app_state.kaggle_selected_class = e.value
+    def update_class_select(class_name): 
+        app_state.kaggle_selected_class = class_name
         ui.notify(app_state.kaggle_selected_class)
         paint_image.refresh()
+        paint_class_select.refresh()
     
     @ui.refreshable
     def paint_image():  
         if (app_state.kaggle_selected_class is not None):
-            with ui.card().classes("w-full"):
-                ui.label(app_state.kaggle_selected_class).classes("text-h6") 
-                
+            with ui.card().classes("w-full"): 
                 selected_path = os.path.join(app_state.image_path, app_state.kaggle_selected_class)  
                 image_files = os.listdir(selected_path)
                 
                 with ui.grid().classes("gap-2 md:gap-4 w-full grid-cols-2 md:grid-cols-4") as image_grid:
                     for _, image_file in enumerate(image_files[:20]):
                         image_path = os.path.join(selected_path, image_file)
-                        ui.image(image_path).style("width: 100%; height: 100%;").props("ratio=1")
+                        ui.image(image_path).props("ratio=1").classes("rounded-lg")
                     
         else:
             ui.label("Please select a class")
@@ -48,17 +48,43 @@ def kaggle_page():
         app_state.class_names = [pathname for pathname in os.listdir(cat_pathname) if os.path.isdir(os.path.join(cat_pathname, pathname))]
         app_state.save()
         ui.notify("Data loaded", color="positive")
-
+        
+    @ui.refreshable
+    def paint_class_select():
+        # ui.select(app_state.class_names,label="Pick a Class", value=app_state.kaggle_selected_class, on_change=update_class_select).classes("w-full")
+        with ui.row().classes("gap-2 w-full"):
+            for class_name in app_state.class_names:
+                ui.button(class_name, on_click=lambda class_name=class_name: update_class_select(class_name)).props("outline size=sm" if class_name != app_state.kaggle_selected_class else "filled size=sm")
+        
     with ui.card().classes("w-full"):
         with ui.row().classes("justify-between w-full"):
             ui.label("Kaggle").classes("text-h6")
             ui.button("Download from Kaggle", icon="download", on_click=load_data)
-        ui.select(app_state.class_names,label="Pick a Class", value=app_state.kaggle_selected_class, on_change=update_class_select).classes("w-full")
+        
+        paint_class_select()
         
     paint_image()
     
 questions : list[Question] = []
 selected_question : Question = None
+
+def get_llm_answer(question: Question | None) -> str | None:
+    if (question is None):
+        return None
+    question_text = f'''What is this cat breed?
+    0:{question.choices[0]}
+    1:{question.choices[1]}
+    2:{question.choices[2]}
+    3:{question.choices[3]}
+    
+    ANSWER IN THIS FORMAT:
+    
+    choice|rational
+    
+    where choice is 0, 1, 2, or 3 and rational is a short rational for the answer'''
+    llm_answer = open_router.get_response(question_text, question.image_path)
+    print(llm_answer)
+    return llm_answer   
 
 def question_page():
     global questions
@@ -81,15 +107,20 @@ def question_page():
     @ui.refreshable
     def paint_question_panel():
         global selected_question
-        with ui.column().classes("w-full"):
+        with ui.column().classes("w-full").style("height: calc(100vh - 150px);"):
             with ui.image(selected_question.image_path).classes("rounded-lg").props("ratio=1"):
                 ui.label("What is this cat breed?").classes("absolute-top text-subtitle1 text-center")
                 with ui.grid().classes("grid-cols-2 gap-4 w-full absolute bottom-0 left-0"):
                     for i, choice in enumerate(selected_question.choices):
-                        ui.button(choice, on_click=lambda: submit_answer(i)).props("outline")
+                        ui.button(choice, on_click=lambda i=i: submit_answer(i)).props("outline")
+        
+    async def run_llm_answer():
+        llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
+        llm_answer_label.text = llm_answer
                     
     def submit_answer(answer):
         global selected_question
+        selected_question.user_answer = answer
         with ui.dialog() as dialog, ui.card():
             with ui.column().classes("w-full"):
                 ui.label(f"You answered: {selected_question.choices[answer]}")
@@ -108,10 +139,11 @@ def question_page():
         questions.append(random_question())
         selected_question = questions[-1]
         paint_question_panel.refresh()
-            
+        
     questions.append(random_question())
     selected_question = questions[0]
-    paint_question_panel()
+    paint_question_panel() 
+    llm_answer_label = ui.label() 
             
         
 
@@ -147,10 +179,7 @@ def open_router_page():
             with ui.row().classes("justify-end w-full"):
                 ui.button("Reset", icon="refresh", on_click=refresh_image)
                 ui.button("Send", icon="send", on_click=lambda: open_router_response(query_text.value, image_path))
-                
-
-
-        
+                      
     open_router_panel()
     
     

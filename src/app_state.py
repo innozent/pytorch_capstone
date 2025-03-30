@@ -12,6 +12,7 @@ class Question:
         self.user_time : float = None
         self.llm_time : float = None
         self.model_time : float = None 
+        self.llm_rational : str = None
     
     def is_user_correct(self):
         return self.user_answer == self.correct_answer

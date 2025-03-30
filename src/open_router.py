@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-model_name = "mistralai/pixtral-large-2411"
-# model_name = "gpt-4o-mini"
+# model_name = "mistralai/pixtral-large-2411"
+model_name = "gpt-4o-mini"
 
 class OpenRouter:
     def __init__(self):
@@ -16,7 +16,7 @@ class OpenRouter:
             "Authorization": f"Bearer {os.getenv('OPENROUTER_API_KEY')}"
         }
         
-    def get_response(self, message, image_path=None):
+    def get_response(self, message: str, image_path: str = None) -> str:
         messages = []
         
         if image_path and os.path.exists(image_path):
