@@ -1,0 +1,9 @@
+nicegui
+torch
+torchvision
+pandas
+numpy
+matplotlib
+scipy
+scikit-learn 
+kagglehub

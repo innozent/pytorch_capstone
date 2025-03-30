@@ -1,0 +1,57 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.75in]{geometry} % For smaller 0.75-inch margins
+% \usepackage{tgtermes} % Tahoma-like font (TeX Gyre Termes)
+\usepackage[sfdefault]{roboto} % Modern Google Roboto font
+\usepackage{titling} % For title customization
+\usepackage{hyperref} % For hyperlinks
+
+% Custom title formatting
+\pretitle{\begin{center}\textbf{}}
+\posttitle{\end{center}}
+\preauthor{\begin{center}\small}
+\postauthor{\end{center}}
+\predate{\begin{center}\small}
+\postdate{\end{center}}
+\setlength{\droptitle}{-1.5em} % Reduce space before title
+
+\title{Pet Image Classification on Oxford-IIIT Pet Dataset}
+\author{Wiwat Pholsomboon --- 1254311 --- INFO-6147 PyTorch\\Capstone Project Proposal}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section*{Project Description}
+This project aims to classify pet images from the Oxford-IIIT Pet Dataset. The dataset contains 37 different classes of pets (both dogs and cats), but only 12 classes of cats will be used for this project. Each class contains approximately 180-200 images. The system will leverage deep learning techniques and PyTorch to automatically identify and classify different cat breeds with high accuracy.
+
+\section*{Why it is it good?}
+\begin{itemize}
+    \item Dataset has different size of images, good for study preprocessing image.
+    \item Dataset is for different cat breeds, good for study if model can classify cat breeds effectively or not.
+\end{itemize}
+
+\section*{How do you think you will do it?}
+\begin{itemize}
+    \item Preprocessing images to standardize input into pytorch model
+    \item Data Augmentation to increase the amount of dataset
+    \item Transfer learning to improve performance of the model as there is limited images data for each class
+\end{itemize}
+
+\section*{What data will you use?}
+\begin{itemize}
+    \item Oxford-IIIT Pet Dataset (\href{https://www.robots.ox.ac.uk/~vgg/data/pets/}{https://www.robots.ox.ac.uk/~vgg/data/pets/})
+    \item Only 12 classes of cats will be used
+    \item Each class contains approximately 180-200 images
+\end{itemize}
+
+\section*{How will you evaluate your system performance?}
+\begin{itemize}
+    \item K-Fold Cross Validation
+    \item Learning Curve to detect overfitting and underfitting
+    \item Confusion Matrix
+    \item Accuracy, Precision, Recall, and F1 Score
+    \item ROC-AUC Score
+\end{itemize}
+
+\end{document}

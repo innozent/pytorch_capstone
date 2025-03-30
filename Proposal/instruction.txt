@@ -1,0 +1,32 @@
+- 5% on your project proposal (one page contains, title, project description, why it is it good? how do you think you will do it? what data will you use? and how to will you evaluate your system performance) (Due 03/11/2025)
+
+
+
+My answer: 
+Title: Pet Image Classification on Oxford-IIIT Pet Dataset
+Project Description: 
+- This project is to classify pet images from the Oxford-IIIT Pet Dataset.
+- There are 37 different classes of pets both dog and cat in the dataset. Only 12 classes of cats will be used for this project.
+- Each class contains 180-200 images.
+
+Why it is it good? 
+- Dataset has different size of images, good for study preprocessing image.
+- Dataset is for different cat breeds, good for study if model can classify cat breeds effectively or not.
+
+How do you think you will do it? 
+- Preprocessing image
+- Data Augmentation to increase the amount of dataset
+- Transfer learning to improve performance of the model as there is limited images data for each class.
+
+What data will you use? 
+- Oxford-IIIT Pet Dataset 
+- Only 12 classes of cats will be used for this project.
+
+How to will you evaluate your system performance? 
+- K-Fold Cross Validation
+- Confusion Matrix
+- Accuracy, Precision, Recall, F1 Score
+- ROC-AUC Score
+
+
+
