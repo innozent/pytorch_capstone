@@ -60,7 +60,7 @@ def set_html_asset():
     ui.colors(primary="darkorange")
     
 if __name__ == "__main__" or __name__ == "__mp_main__":
-    app_state.load()
+    app_state.load() 
     app_state.current_page = "question"
     ui.run(title="Cat Breed Quiz")  
     

@@ -58,10 +58,11 @@ def kaggle_page():
     paint_image()
     
 questions : list[Question] = []
+selected_question : Question = None
 
 def question_page():
     global questions
-    
+    global selected_question
     def random_question() -> Question:
         random_class = random.choice(app_state.class_names) 
         image_path = os.path.join(app_state.image_path, random_class, random.choice(os.listdir(os.path.join(app_state.image_path, random_class))))
@@ -75,17 +76,42 @@ def question_page():
         
         correct_answer = random_choices.index(random_class)
         
-        return Question(image_path, random_choices[0], random_choices[1], random_choices[2], random_choices[3], correct_answer)
+        return Question(image_path, random_choices, correct_answer)
     
-    questions.append(random_question())
-    
-    with ui.card().classes("w-full"):
+    @ui.refreshable
+    def paint_question_panel():
+        global selected_question
         with ui.column().classes("w-full"):
-            ui.label("Question Page").classes("text-h6")
-            ui.button("Question Page", on_click=lambda: ui.navigate.back())
+            with ui.image(selected_question.image_path).classes("rounded-lg").props("ratio=1"):
+                ui.label("What is this cat breed?").classes("absolute-top text-subtitle1 text-center")
+                with ui.grid().classes("grid-cols-2 gap-4 w-full absolute bottom-0 left-0"):
+                    for i, choice in enumerate(selected_question.choices):
+                        ui.button(choice, on_click=lambda: submit_answer(i)).props("outline")
+                    
+    def submit_answer(answer):
+        global selected_question
+        with ui.dialog() as dialog, ui.card():
+            with ui.column().classes("w-full"):
+                ui.label(f"You answered: {selected_question.choices[answer]}")
+                if (answer == selected_question.correct_answer):
+                    ui.label("Correct!")
+                else:
+                    ui.label("Incorrect!")
+                    
+                ui.button("Next", on_click=next_question)
+                ui.button("Close", on_click=lambda: dialog.close())
+            dialog.open()
+    
+    def next_question():
+        global questions
+        global selected_question
+        questions.append(random_question())
+        selected_question = questions[-1]
+        paint_question_panel.refresh()
             
-            ui.label("Question").classes("text-h6")
-            ui.label(questions[0].image_path).classes("text-h6")
+    questions.append(random_question())
+    selected_question = questions[0]
+    paint_question_panel()
             
         
 

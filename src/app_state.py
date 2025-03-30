@@ -2,12 +2,9 @@ import torch
 import pickle
 
 class Question:
-    def __init__(self, image_path: str, a: str, b: str, c: str, d: str, correct_answer: int):
+    def __init__(self, image_path: str, choices: list[str], correct_answer: int):
         self.image_path : str = image_path
-        self.a : str = a
-        self.b : str = b
-        self.c : str = c
-        self.d : str = d
+        self.choices : list[str] = choices
         self.correct_answer : int = correct_answer
         self.user_answer : int = None 
         self.llm_answer : int = None
