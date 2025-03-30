@@ -3,6 +3,7 @@ from nicegui import ui, app
 import src.pages as pages
 import torch
 from src.app_state import app_state
+from src.model_train import initial_model_training
 
 @ui.page("/")
 def index_page():
@@ -61,7 +62,8 @@ def set_html_asset():
     
 if __name__ == "__main__" or __name__ == "__mp_main__":
     app_state.load() 
-    app_state.current_page = "kaggle"
+    app_state.model_trainings = initial_model_training(app_state.model_trainings)
+    app_state.current_page = "model"
     # app_state.current_page = "question"
-    ui.run(title="Cat Breed Quiz")  
+    ui.run(title="Cat Breed Quiz")   
     

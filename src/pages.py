@@ -3,19 +3,65 @@ import kagglehub
 import os
 import random
 import asyncio
-from src.app_state import app_state, Question
+from src.app_state import app_state, Question, ModelTraining
 from src.open_router import open_router
+from src.model_train import train_model 
+import plotly.express as px
 
-def model_page():
-    with ui.grid().classes("gap-2 md:gap-4 grid-cols-2 md:grid-cols-4"):
-        ui.button("Load Model", on_click=lambda: ui.navigate.back())
-        ui.button("Train New Model", on_click=lambda: ui.navigate.back())
-        ui.button("Load Data", on_click=lambda: ui.navigate.back())
+def model_page(): 
+    async def on_train_model(model_training: ModelTraining): 
+        model = model_training.get_model_function()
+        print(model_training.model_name)
+        (training_loss, training_accuracy, validation_loss, validation_accuracy, training_time) = await run.cpu_bound(train_model, app_state, model, model_training.model_file_name)
+        
+        model_training.training_loss = training_loss
+        model_training.training_accuracy = training_accuracy
+        model_training.validation_loss = validation_loss
+        model_training.validation_accuracy = validation_accuracy
+        model_training.training_time = training_time
+        app_state.save()
+        
+        ui.notify("Model trained", color="positive")
+        
+    def paint_accuracy_chart():
+        
+        trained_models = [model for model in app_state.model_trainings if model.training_loss is not None]
+        if len(trained_models) == 0:
+            ui.label("No model trained")
+            return
+        
+        with ui.card().classes("w-full"):
+            with ui.grid().classes("grid-cols-2 gap-0 w-full"):
+                for model_training in app_state.model_trainings:
+                    model_training.accuracy = model_training.get_accuracy()
+                    model_training.loss = model_training.get_loss()
+                
+                chart_model = {}
+                chart_model["model_name"] = [model_training.model_name for model_training in trained_models]
+                chart_model["accuracy"] = [model_training.accuracy * 100 for model_training in trained_models]
+                chart_model["loss"] = [model_training.loss for model_training in trained_models]
+                
+                # Create accuracy chart
+                fig_accuracy = px.bar(chart_model, x="model_name", 
+                                                   y="accuracy", 
+                                                   range_y=[0, 100],
+                                                   color="accuracy",
+                                                   title="Model Accuracy")
+                ui.plotly(fig_accuracy)
+                
+                # Create loss chart
+                fig_loss = px.bar(chart_model, x="model_name", 
+                                               y="loss", 
+                                               color="loss",
+                                               title="Model Loss")
+                ui.plotly(fig_loss)
+        
 
-    log_text = ui.textarea(
-        label="Log",
-        placeholder="Log", 
-    ).classes("w-full")
+    with ui.grid().classes("gap-2 md:gap-4 grid-cols-2 md:grid-cols-4"): 
+        for model_training in app_state.model_trainings:
+            ui.button(model_training.model_name, on_click=lambda model_training=model_training: on_train_model(model_training))
+         
+    paint_accuracy_chart()
     
  
 def kaggle_page():      
@@ -112,7 +158,7 @@ def question_page():
                 ui.label("What is this cat breed?").classes("absolute-top text-subtitle1 text-center")
                 with ui.grid().classes("grid-cols-2 gap-4 w-full absolute bottom-0 left-0"):
                     for i, choice in enumerate(selected_question.choices):
-                        ui.button(choice, on_click=lambda i=i: submit_answer(i)).props("outline")
+                        ui.button(choice, on_click=lambda i=i: submit_answer(i)).classes("font-bold")
         
     async def run_llm_answer():
         llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
