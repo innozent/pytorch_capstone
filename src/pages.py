@@ -5,8 +5,10 @@ import random
 import asyncio
 from src.app_state import app_state, Question, ModelTraining
 from src.open_router import open_router
-from src.model_train import train_model 
+from src.model_train import train_model, infer_model
 import plotly.express as px
+import time
+import pandas as pd
 
 def model_page(): 
     async def on_train_model(model_training: ModelTraining): 
@@ -41,6 +43,16 @@ def model_page():
                 chart_model["accuracy"] = [model_training.accuracy * 100 for model_training in trained_models]
                 chart_model["loss"] = [model_training.loss for model_training in trained_models]
                 
+                line_data = {}
+                for model_training in trained_models:
+                    line_data[model_training.model_name] = model_training.training_loss
+                line_df = pd.DataFrame(line_data)
+                
+                acc_data = {}
+                for model_training in trained_models:
+                    acc_data[model_training.model_name] = [acc * 100 for acc in model_training.training_accuracy]
+                acc_df = pd.DataFrame(acc_data)
+                
                 # Create accuracy chart
                 fig_accuracy = px.bar(chart_model, x="model_name", 
                                                    y="accuracy", 
@@ -55,6 +67,17 @@ def model_page():
                                                color="loss",
                                                title="Model Loss")
                 ui.plotly(fig_loss)
+                
+                fig_training_loss = px.line(line_df, y=line_df.columns[1:], 
+                                            title="Model Training Loss")
+                
+                ui.plotly(fig_training_loss)
+                
+                fig_training_accuracy = px.line(acc_df, y=acc_df.columns[1:], 
+                                                range_y=[0, 100],
+                                            title="Model Training Accuracy")
+                ui.plotly(fig_training_accuracy)
+                
         
 
     with ui.grid().classes("gap-2 md:gap-4 grid-cols-2 md:grid-cols-4"): 
@@ -132,6 +155,15 @@ def get_llm_answer(question: Question | None) -> str | None:
     print(llm_answer)
     return llm_answer   
 
+def get_model_answer(question: Question | None) -> str | None:
+    if (question is None):
+        return None
+    model_answer = infer_model(app_state, app_state.model_trainings[-1].model_name, question)
+    if (model_answer is None):
+        return None
+    return model_answer
+
+
 def question_page():
     global questions
     global selected_question
@@ -161,22 +193,50 @@ def question_page():
                         ui.button(choice, on_click=lambda i=i: submit_answer(i)).classes("font-bold")
         
     async def run_llm_answer():
+        start_time = time.time()
         llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
-        llm_answer_label.text = llm_answer
-                    
+        # llm_answer = "1|This is a test answer"
+        # llm_answer_label.text = llm_answer
+        
+        selected_question.llm_answer = int(llm_answer.split("|")[0])
+        selected_question.llm_rational = llm_answer.split("|")[1]
+        selected_question.llm_answer_time = time.time() - start_time
+        
+    async def run_model_answer():
+        start_time = time.time()
+        model_answer = await run.cpu_bound(get_model_answer, selected_question)  
+        selected_question.model_answer = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+                                         1 if model_answer.lower() == selected_question.choices[1].lower()  else \
+                                         2 if model_answer.lower() == selected_question.choices[2].lower()  else \
+                                         3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
+        selected_question.model_answer_time = time.time() - start_time
+                 
+    def answer_panel(answer, title: str):
+        with ui.card().classes("w-full mb-4 p-4"):
+            ui.label(title).classes("text-h6 text-primary mb-2")
+            with ui.row().classes("items-center"):
+                ui.label(f"{selected_question.choices[answer]}").classes("text-h5 font-bold")
+                if (answer == selected_question.correct_answer):
+                    ui.icon("check_circle").classes("text-positive text-h5 ml-2")
+                    ui.label("Correct!").classes("text-positive text-h6 ml-2")
+                else:
+                    ui.icon("cancel").classes("text-negative text-h5 ml-2")
+                    ui.label("Incorrect!").classes("text-negative text-h6 ml-2")
+                    ui.label(f"The correct answer was: {selected_question.choices[selected_question.correct_answer]}").classes("text-body1 mt-2 text-weight-medium")
+                
+                 
     def submit_answer(answer):
         global selected_question
         selected_question.user_answer = answer
         with ui.dialog() as dialog, ui.card():
-            with ui.column().classes("w-full"):
-                ui.label(f"You answered: {selected_question.choices[answer]}")
-                if (answer == selected_question.correct_answer):
-                    ui.label("Correct!")
-                else:
-                    ui.label("Incorrect!")
-                    
-                ui.button("Next", on_click=next_question)
-                ui.button("Close", on_click=lambda: dialog.close())
+            with ui.column().classes("w-full p-4"):
+                answer_panel(selected_question.user_answer, "Your Answer") 
+                answer_panel(selected_question.llm_answer, "LLM Answer")
+                answer_panel(selected_question.model_answer, "Model Answer")
+                
+                with ui.row().classes("justify-end w-full gap-2 mt-4"):
+                    ui.button("Next Question", on_click=next_question).props("color=primary icon=navigate_next")
+                    ui.button("Close", on_click=lambda: dialog.close()).props("flat icon=close")
             dialog.open()
     
     def next_question():
@@ -185,13 +245,14 @@ def question_page():
         questions.append(random_question())
         selected_question = questions[-1]
         paint_question_panel.refresh()
+        asyncio.create_task(run_llm_answer())
+        asyncio.create_task(run_model_answer())
         
     questions.append(random_question())
     selected_question = questions[0]
-    paint_question_panel() 
-    llm_answer_label = ui.label() 
-            
-        
+    paint_question_panel()  
+    asyncio.create_task(run_llm_answer())
+    asyncio.create_task(run_model_answer()) 
 
 def open_router_page():
 

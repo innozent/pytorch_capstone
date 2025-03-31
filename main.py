@@ -13,9 +13,9 @@ def index_page():
         ui.button(on_click=lambda: left_drawer.toggle(), icon='menu').props('flat color=white')
         ui.label("Cat Breed Quiz").classes("text-h5 font-bold playwrite-hu")
         
-    with ui.left_drawer(fixed=True).classes("border-r border-gray-200") as left_drawer:
+    with ui.left_drawer(fixed=True).props("width=200").classes("border-r border-gray-200") as left_drawer:
         paint_navigation_drawer()
-
+ 
 @ui.refreshable
 def paint_navigation_drawer():
     with ui.list().classes("w-full"):
@@ -38,6 +38,7 @@ def main_container():
             pages.kaggle_page()
         elif (app_state.current_page == "open_router"):
             pages.open_router_page()
+            
 def set_page(page):
     app_state.current_page = page
     main_container.refresh()
@@ -63,7 +64,7 @@ def set_html_asset():
 if __name__ == "__main__" or __name__ == "__mp_main__":
     app_state.load() 
     app_state.model_trainings = initial_model_training(app_state.model_trainings)
-    app_state.current_page = "model"
     # app_state.current_page = "question"
+    app_state.current_page = "model"
     ui.run(title="Cat Breed Quiz")   
     

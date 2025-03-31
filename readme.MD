@@ -5,10 +5,11 @@
 This is a simple quiz game that allows you to test your knowledge of cat breeds.
 
 ## Features
+- Local Model Training
+  - CNN Model
+  - ResNet Model
+  - EfficientNet Model
+  - VGG Model 
+- Remote LLM 
+  - GPT-4o-mini
 
-- [x] Load data from Kaggle
-- [x] Display a random cat image
-- [ ] Display a question with 4 choices
-- [ ] Display the correct answer
-- [ ] Display the user's answer
-- [ ] Display the time taken to answer the question

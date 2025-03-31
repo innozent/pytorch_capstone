@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
 import os
-from src.app_state import ModelTraining
+from src.app_state import ModelTraining, Question
 import time
 
 class CatBreedDataset(Dataset):
@@ -209,7 +209,27 @@ def train_model(app_state,model: nn.Module, model_name: str) -> tuple[list[float
     print(f"Loss: {running_loss / len(train_loader)}")
     training_time = time.time() - start_time
     print(f"Saving model to {model_name}")
-    torch.save(model.state_dict(), model_name)
+    scripted_model = torch.jit.script(model)
+    torch.jit.save(scripted_model, model_name)
     
     return training_loss, training_accuracy, validation_loss, validation_accuracy, training_time
+
+
+def infer_model(app_state, model_name: str, question: Question) -> str | None:
+    
+    model_training = next((model_training for model_training in app_state.model_trainings if model_training.model_name == model_name), None)
+    if model_training is None:
+        raise ValueError(f"Model {model_name} not found")
+    
+    model = torch.jit.load(model_training.model_file_name) 
+    
+    transform = get_transformation()
+    image = transform(Image.open(question.image_path).convert('RGB'))
+    image = image.unsqueeze(0) 
+    image = image.to(app_state.device)
+    model.eval()
+    with torch.no_grad():
+        outputs = model(image)
+        _, predicted = torch.max(outputs.data, 1)
+        return app_state.class_names[predicted.item()] 
     
