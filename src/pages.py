@@ -33,7 +33,7 @@ def model_page():
             return
         
         with ui.card().classes("w-full"):
-            with ui.grid().classes("grid-cols-2 gap-0 w-full"):
+            with ui.grid().classes("grid-cols-1 lg:grid-cols-2 gap-0 w-full"):
                 for model_training in app_state.model_trainings:
                     model_training.accuracy = model_training.get_accuracy()
                     model_training.loss = model_training.get_loss()
