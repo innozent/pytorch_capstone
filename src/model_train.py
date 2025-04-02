@@ -7,8 +7,15 @@ import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
 import os
-from src.app_state import ModelTraining, Question
-import time
+from src.app_state import ModelTraining, Question, AppState
+import time 
+import numpy as np
+
+class Models:
+    ClassificationModel = "Classification Model"
+    ResNetModel = "ResNet Model"
+    EfficientNetModel = "EfficientNet Model"
+    VGGModel = "VGG Model" 
 
 class CatBreedDataset(Dataset):
     def __init__(self, image_path, class_names, transform):
@@ -75,10 +82,10 @@ def initial_model_training(existing_model_trainings: list[ModelTraining] | None)
         existing_model_trainings = []
         
     model_trainings = [
-        ModelTraining("Classification Model", "classification_model.pth", get_classification_model),
-        ModelTraining("ResNet Model", "resnet_model.pth", get_resnet_model),
-        ModelTraining("EfficientNet Model", "efficientnet_model.pth", get_efficient_net_model),
-        ModelTraining("VGG Model", "vgg_model.pth", get_vgg_model)
+        ModelTraining(Models.ClassificationModel, "classification_model.pth", get_classification_model),
+        ModelTraining(Models.ResNetModel, "resnet_model.pth", get_resnet_model),
+        ModelTraining(Models.EfficientNetModel, "efficientnet_model.pth", get_efficient_net_model),
+        ModelTraining(Models.VGGModel, "vgg_model.pth", get_vgg_model)
     ]
     
     for model_training in model_trainings:
@@ -215,7 +222,7 @@ def train_model(app_state,model: nn.Module, model_name: str) -> tuple[list[float
     return training_loss, training_accuracy, validation_loss, validation_accuracy, training_time
 
 
-def infer_model(app_state, model_name: str, question: Question) -> str | None:
+def infer_model(app_state: AppState, model_name: str, question: Question) -> str | None:
     
     model_training = next((model_training for model_training in app_state.model_trainings if model_training.model_name == model_name), None)
     if model_training is None:
@@ -233,3 +240,165 @@ def infer_model(app_state, model_name: str, question: Question) -> str | None:
         _, predicted = torch.max(outputs.data, 1)
         return app_state.class_names[predicted.item()] 
     
+def grad_cam(app_state, model_name: str, question: Question) -> tuple[Image.Image, str]:
+    """
+    Implements GradCAM visualization for model interpretability without using OpenCV.
+    Works with any model architecture by dynamically finding the appropriate convolutional layer.
+    Returns PIL Image ready to use with NiceGUI's ui.image component.
+    
+    Args:
+        app_state: Application state containing model information
+        model_name: Name of the model to use
+        question: Question containing the image path
+        
+    Returns:
+        tuple: (PIL Image of visualization, predicted class name)
+    """
+    model_training = next((model_training for model_training in app_state.model_trainings 
+                          if model_training.model_name == model_name), None)
+    if model_training is None:
+        raise ValueError(f"Model {model_name} not found")
+    
+    # Create the original model architecture based on model name
+    if model_name == Models.ClassificationModel:
+        original_model = get_classification_model()
+    elif model_name == Models.ResNetModel:
+        original_model = get_resnet_model()
+    elif model_name == Models.EfficientNetModel:
+        original_model = get_efficient_net_model()
+    elif model_name == Models.VGGModel:
+        original_model = get_vgg_model()
+    else:
+        raise ValueError(f"Unknown model architecture for {model_name}")
+    
+    # Load weights from the saved model
+    original_model.load_state_dict(torch.jit.load(model_training.model_file_name).state_dict())
+    original_model = original_model.to(app_state.device)
+    original_model.eval()
+    
+    # Prepare the image
+    transform = get_transformation()
+    original_image = Image.open(question.image_path).convert('RGB')
+    input_tensor = transform(original_image).unsqueeze(0).to(app_state.device)
+    
+    # Find target layer based on model architecture
+    target_layer = None
+    
+    if model_name == Models.ClassificationModel:
+        # For custom CNN, use the last conv layer in conv_block
+        target_layer = original_model.conv_block[-3]  # Get the last Conv2d before the final MaxPool
+    elif model_name == Models.ResNetModel:
+        # For ResNet, use the last layer in layer4
+        target_layer = original_model.layer4[-1].conv2
+    elif model_name == Models.EfficientNetModel:
+        # For EfficientNet, use the last conv layer in features
+        # Navigate to the last MBConv block's last conv layer
+        target_layer = original_model.features[-1][-1].block[-1][0]
+    elif model_name == Models.VGGModel:
+        # For VGG, use the last conv layer in features
+        for module in original_model.features:
+            if isinstance(module, nn.Conv2d):
+                target_layer = module
+    
+    if target_layer is None:
+        raise ValueError(f"Could not find appropriate target layer for {model_name}")
+    
+    # Get activations and gradients
+    activations = {}
+    gradients = {}
+    
+    def forward_hook(module, input, output):
+        activations['target'] = output
+    
+    def backward_hook(module, grad_input, grad_output):
+        gradients['target'] = grad_output[0]
+    
+    # Register hooks
+    forward_handle = target_layer.register_forward_hook(forward_hook)
+    backward_handle = target_layer.register_full_backward_hook(backward_hook)
+    
+    # Forward pass
+    output = original_model(input_tensor)
+    pred_class = output.argmax(dim=1).item()
+    pred_class_name = app_state.class_names[pred_class]
+    
+    # Backward pass for the predicted class
+    original_model.zero_grad()
+    
+    # For classification models with LogSoftmax
+    if isinstance(output, torch.Tensor) and output.shape[1] == len(app_state.class_names):
+        if model_name == Models.ClassificationModel:
+            # If using LogSoftmax in the model (check the last layer)
+            class_score = torch.exp(output[0, pred_class])  # Convert log probability back to probability
+        else:
+            class_score = output[0, pred_class]
+    else:
+        # Fallback
+        class_score = output[0, pred_class]
+    
+    # Backward pass
+    class_score.backward()
+    
+    # Remove the hooks
+    forward_handle.remove()
+    backward_handle.remove()
+    
+    # Get the gradients and activations
+    gradients = gradients['target']
+    activations = activations['target']
+    
+    # Calculate weights based on global average pooling of gradients
+    weights = torch.mean(gradients, dim=(2, 3), keepdim=True)
+    
+    # Generate weighted activation map
+    cam = torch.sum(weights * activations, dim=1, keepdim=True)
+    
+    # Apply ReLU to focus on features that have a positive influence
+    cam = F.relu(cam)
+    
+    # Normalize the heatmap
+    cam = cam - torch.min(cam)
+    cam = cam / (torch.max(cam) + 1e-8)  # Add epsilon to avoid division by zero
+    
+    # Convert to numpy array
+    cam = cam.detach().cpu().numpy()[0, 0]
+    
+    # Get original image dimensions
+    original_width, original_height = original_image.size
+    
+    # Resize the heatmap to match original image size using PIL
+    heatmap_array = (cam * 255).astype(np.uint8)
+    heatmap_image = Image.fromarray(heatmap_array).resize((original_width, original_height), Image.BICUBIC)
+    
+    # Convert heatmap to colormap (similar to COLORMAP_JET in OpenCV)
+    # Create a colormap similar to jet (going from blue to red)
+    def create_colormap(value):
+        # Map values from 0-1 to RGB colors simulating jet colormap
+        if value < 0.25:
+            r, g, b = 0, 4 * value, 1
+        elif value < 0.5:
+            r, g, b = 0, 1, 1 - 4 * (value - 0.25)
+        elif value < 0.75:
+            r, g, b = 4 * (value - 0.5), 1, 0
+        else:
+            r, g, b = 1, 1 - 4 * (value - 0.75), 0
+        return int(r * 255), int(g * 255), int(b * 255)
+    
+    # Apply colormap to heatmap
+    heatmap_colored = Image.new('RGB', heatmap_image.size)
+    for y in range(heatmap_image.height):
+        for x in range(heatmap_image.width):
+            pixel_value = heatmap_image.getpixel((x, y)) / 255.0
+            heatmap_colored.putpixel((x, y), create_colormap(pixel_value))
+    
+    # Convert original image to numpy array for blending
+    original_array = np.array(original_image)
+    heatmap_array = np.array(heatmap_colored)
+    
+    # Blend the heatmap with the original image (40% heatmap, 60% original)
+    blended_array = (0.4 * heatmap_array + 0.6 * original_array).astype(np.uint8)
+    
+    # Convert back to PIL Image
+    output_image = Image.fromarray(blended_array)
+    
+    return output_image, pred_class_name

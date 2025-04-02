@@ -5,7 +5,7 @@ import random
 import asyncio
 from src.app_state import app_state, Question, ModelTraining
 from src.open_router import open_router
-from src.model_train import train_model, infer_model
+from src.model_train import train_model, infer_model, grad_cam
 import plotly.express as px
 import time
 import pandas as pd
@@ -88,13 +88,13 @@ def model_page():
     
  
 def kaggle_page():      
+
     def update_class_select(class_name): 
         app_state.kaggle_selected_class = class_name
         ui.notify(app_state.kaggle_selected_class)
         paint_image.refresh()
         paint_class_select.refresh()
-    
-    @ui.refreshable
+
     def paint_image():  
         if (app_state.kaggle_selected_class is not None):
             with ui.card().classes("w-full"): 
@@ -117,6 +117,8 @@ def kaggle_page():
         app_state.class_names = [pathname for pathname in os.listdir(cat_pathname) if os.path.isdir(os.path.join(cat_pathname, pathname))]
         app_state.save()
         ui.notify("Data loaded", color="positive")
+        
+        paint_class_select.refresh()
         
     @ui.refreshable
     def paint_class_select():
@@ -195,8 +197,8 @@ def question_page():
     async def run_llm_answer():
         start_time = time.time()
         llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
-        # llm_answer = "1|This is a test answer"
-        # llm_answer_label.text = llm_answer
+        # llm_answer = "1|This is a test answer
+        llm_answer_label.text = llm_answer
         
         selected_question.llm_answer = int(llm_answer.split("|")[0])
         selected_question.llm_rational = llm_answer.split("|")[1]
@@ -245,6 +247,7 @@ def question_page():
         questions.append(random_question())
         selected_question = questions[-1]
         paint_question_panel.refresh()
+        paint_grad_cam.refresh()
         asyncio.create_task(run_llm_answer())
         asyncio.create_task(run_model_answer())
         
@@ -253,6 +256,15 @@ def question_page():
     paint_question_panel()  
     asyncio.create_task(run_llm_answer())
     asyncio.create_task(run_model_answer()) 
+    
+    @ui.refreshable
+    def paint_grad_cam():
+        (image, label) = grad_cam(app_state, app_state.model_trainings[0].model_name, selected_question)
+        ui.image(image).classes("rounded-lg")
+        ui.label(label).classes("text-h6")
+    
+    llm_answer_label = ui.label("Loading LLM Answer...").classes("text-h6")
+    paint_grad_cam()
 
 def open_router_page():
 
