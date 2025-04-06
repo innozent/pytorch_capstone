@@ -64,7 +64,8 @@ def set_html_asset():
 if __name__ == "__main__" or __name__ == "__mp_main__":
     app_state.load() 
     app_state.model_trainings = initial_model_training(app_state.model_trainings)
-    app_state.current_page = "kaggle"
+    # app_state.current_page = "kaggle"
+    app_state.current_page = "question"
     # app_state.current_page = "model"
     ui.run(title="Cat Breed Quiz")   
     

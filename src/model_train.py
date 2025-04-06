@@ -276,6 +276,10 @@ def grad_cam(app_state, model_name: str, question: Question) -> tuple[Image.Imag
     original_model = original_model.to(app_state.device)
     original_model.eval()
     
+    # Reenable the gradients for grad cam
+    for param in original_model.parameters():
+        param.requires_grad = True
+    
     # Prepare the image
     transform = get_transformation()
     original_image = Image.open(question.image_path).convert('RGB')
@@ -293,13 +297,15 @@ def grad_cam(app_state, model_name: str, question: Question) -> tuple[Image.Imag
     elif model_name == Models.EfficientNetModel:
         # For EfficientNet, use the last conv layer in features
         # Navigate to the last MBConv block's last conv layer
-        target_layer = original_model.features[-1][-1].block[-1][0]
+        target_layer = original_model.features[-1][0]
+        
     elif model_name == Models.VGGModel:
         # For VGG, use the last conv layer in features
         for module in original_model.features:
             if isinstance(module, nn.Conv2d):
                 target_layer = module
-    
+        print(original_model.features)
+        print(target_layer)
     if target_layer is None:
         raise ValueError(f"Could not find appropriate target layer for {model_name}")
     
@@ -311,11 +317,11 @@ def grad_cam(app_state, model_name: str, question: Question) -> tuple[Image.Imag
         activations['target'] = output
     
     def backward_hook(module, grad_input, grad_output):
-        gradients['target'] = grad_output[0]
+        gradients['target'] = grad_output[0].clone()
     
     # Register hooks
     forward_handle = target_layer.register_forward_hook(forward_hook)
-    backward_handle = target_layer.register_full_backward_hook(backward_hook)
+    backward_handle = target_layer.register_backward_hook(backward_hook)
     
     # Forward pass
     output = original_model(input_tensor)

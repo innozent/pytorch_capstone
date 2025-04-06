@@ -70,12 +70,18 @@ def model_page():
                 
                 fig_training_loss = px.line(line_df, y=line_df.columns[1:], 
                                             title="Model Training Loss")
+                fig_training_loss.update_layout(
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                )
                 
                 ui.plotly(fig_training_loss)
                 
                 fig_training_accuracy = px.line(acc_df, y=acc_df.columns[1:], 
                                                 range_y=[0, 100],
                                             title="Model Training Accuracy")
+                fig_training_accuracy.update_layout(
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                )
                 ui.plotly(fig_training_accuracy)
                 
         
@@ -95,6 +101,7 @@ def kaggle_page():
         paint_image.refresh()
         paint_class_select.refresh()
 
+    @ui.refreshable
     def paint_image():  
         if (app_state.kaggle_selected_class is not None):
             with ui.card().classes("w-full"): 
@@ -138,6 +145,7 @@ def kaggle_page():
     
 questions : list[Question] = []
 selected_question : Question = None
+count_down_time = 10
 
 def get_llm_answer(question: Question | None) -> str | None:
     if (question is None):
@@ -169,6 +177,13 @@ def get_model_answer(question: Question | None) -> str | None:
 def question_page():
     global questions
     global selected_question
+    global count_down_time
+    
+    # Add countdown timer state
+    countdown_active = False
+    countdown_task = None
+    countdown_label = None
+    
     def random_question() -> Question:
         random_class = random.choice(app_state.class_names) 
         image_path = os.path.join(app_state.image_path, random_class, random.choice(os.listdir(os.path.join(app_state.image_path, random_class))))
@@ -184,20 +199,49 @@ def question_page():
         
         return Question(image_path, random_choices, correct_answer)
     
+    async def countdown_timer():
+        nonlocal countdown_active
+        countdown_active = True
+        remaining_time = count_down_time
+        
+        while remaining_time > 0 and countdown_active:
+            if countdown_label:
+                countdown_label.text = f"Time remaining: {remaining_time} seconds"
+            await asyncio.sleep(1)
+            remaining_time -= 1
+        
+        if countdown_active:
+            # Time ran out, submit a random answer
+            if selected_question and selected_question.user_answer is None:
+                ui.notify("Time's up! Submitting random answer.", color="warning")
+                submit_answer(random.randint(0, 3))
+    
+    def start_countdown():
+        nonlocal countdown_task
+        if countdown_task:
+            countdown_task.cancel()
+        countdown_task = asyncio.create_task(countdown_timer())
+    
+    def stop_countdown():
+        nonlocal countdown_active
+        countdown_active = False
+    
     @ui.refreshable
     def paint_question_panel():
         global selected_question
-        with ui.column().classes("w-full").style("height: calc(100vh - 150px);"):
-            with ui.image(selected_question.image_path).classes("rounded-lg").props("ratio=1"):
-                ui.label("What is this cat breed?").classes("absolute-top text-subtitle1 text-center")
+        with ui.column().classes("w-full bg-grey").style("height: calc(100vh - 150px);"):
+            with ui.image(selected_question.image_path).classes("rounded-lg").props("fit=contain"):
+                nonlocal countdown_label
+                countdown_label = ui.label(f"What is this cat breed?").classes("absolute-top text-subtitle1 text-center text-bold")
+                # ui.label("What is this cat breed?").classes("absolute-top text-subtitle1 text-center")
                 with ui.grid().classes("grid-cols-2 gap-4 w-full absolute bottom-0 left-0"):
                     for i, choice in enumerate(selected_question.choices):
                         ui.button(choice, on_click=lambda i=i: submit_answer(i)).classes("font-bold")
         
     async def run_llm_answer():
         start_time = time.time()
-        llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
-        # llm_answer = "1|This is a test answer
+        # llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
+        llm_answer = "1|This is a test answer"
         llm_answer_label.text = llm_answer
         
         selected_question.llm_answer = int(llm_answer.split("|")[0])
@@ -229,6 +273,9 @@ def question_page():
                  
     def submit_answer(answer):
         global selected_question
+        # Stop the countdown when an answer is submitted
+        stop_countdown()
+        
         selected_question.user_answer = answer
         with ui.dialog() as dialog, ui.card():
             with ui.column().classes("w-full p-4"):
@@ -250,16 +297,20 @@ def question_page():
         paint_grad_cam.refresh()
         asyncio.create_task(run_llm_answer())
         asyncio.create_task(run_model_answer())
+        # Start the countdown for the new question
+        start_countdown()
         
     questions.append(random_question())
     selected_question = questions[0]
     paint_question_panel()  
     asyncio.create_task(run_llm_answer())
     asyncio.create_task(run_model_answer()) 
+    # Start the countdown for the first question
+    start_countdown()
     
     @ui.refreshable
     def paint_grad_cam():
-        (image, label) = grad_cam(app_state, app_state.model_trainings[0].model_name, selected_question)
+        (image, label) = grad_cam(app_state, app_state.model_trainings[3].model_name, selected_question)
         ui.image(image).classes("rounded-lg")
         ui.label(label).classes("text-h6")
     
