@@ -178,8 +178,49 @@ def question_page():
     
     # Add countdown timer state
     countdown_active = False
-    countdown_task = None
+    countdown_timer = None
     countdown_label = None
+    remaining_time = count_down_time
+    
+    def countdown_timer_callback():
+        nonlocal remaining_time, countdown_active
+        if not countdown_active or remaining_time <= 0:
+            return
+        
+        if countdown_label:
+            countdown_label.text = f"Time remaining: {remaining_time} seconds"
+        
+        remaining_time -= 1
+        
+        if remaining_time <= 0 and countdown_active:
+            # Time ran out, submit a random answer
+            if selected_question and selected_question.user_answer is None:
+                ui.notify("Time's up! Submitting random answer.", color="warning")
+                # Use a random answer and ensure the popup is shown
+                random_answer = random.randint(0, 3)
+                selected_question.user_answer = random_answer
+                show_answer_dialog(random_answer)
+            # Make sure to stop the countdown when it completes
+            stop_countdown()
+    
+    def start_countdown():
+        nonlocal countdown_active, remaining_time, countdown_timer
+        countdown_active = True
+        remaining_time = count_down_time
+        
+        # Cancel existing timer if any
+        if countdown_timer:
+            countdown_timer.cancel()
+        
+        # Create a new timer that runs every second
+        countdown_timer = ui.timer(1.0, countdown_timer_callback)
+    
+    def stop_countdown():
+        nonlocal countdown_active, countdown_timer
+        countdown_active = False
+        if countdown_timer:
+            countdown_timer.cancel()
+            countdown_timer = None
     
     def random_question() -> Question:
         random_class = random.choice(app_state.class_names) 
@@ -195,34 +236,6 @@ def question_page():
         correct_answer = random_choices.index(random_class)
         
         return Question(image_path, random_choices, correct_answer)
-    
-    async def countdown_timer():
-        nonlocal countdown_active
-        countdown_active = True
-        remaining_time = count_down_time
-        
-        while remaining_time > 0 and countdown_active:
-            if countdown_label:
-                countdown_label.text = f"Time remaining: {remaining_time} seconds"
-            await asyncio.sleep(1)
-            remaining_time -= 1
-        
-        if countdown_active:
-            print("Time ran out")
-            # Time ran out, submit a random answer
-            if selected_question and selected_question.user_answer is None:
-                ui.notify("Time's up! Submitting random answer.", color="warning")
-                submit_answer(random.randint(0, 3))
-    
-    def start_countdown():
-        nonlocal countdown_task
-        if countdown_task:
-            countdown_task.cancel()
-        countdown_task = asyncio.create_task(countdown_timer())
-    
-    def stop_countdown():
-        nonlocal countdown_active
-        countdown_active = False
     
     @ui.refreshable
     def paint_question_panel():
@@ -280,10 +293,11 @@ def question_page():
         selected_question.model_time3 = time.time() - start_time
 
     def answer_panel(answer, title: str, rational: str | None = None, time: float | None = None, grad_cam_model: str | None = None):
+        print(f"answer: {answer}, title: {title}, rational: {rational}, time: {time}, grad_cam_model: {grad_cam_model}, correct_answer: {selected_question.correct_answer}")
         with ui.card().classes("w-full mb-4 p-4"):
             ui.label(title).classes("text-h6 text-primary mb-2")
             with ui.row().classes("items-center"):
-                ui.label(f"{selected_question.choices[answer]}").classes("text-h5 font-bold")
+                ui.label(f"{selected_question.choices[answer]}" if answer != -1 else "I don't know").classes("text-h5 font-bold")
                 if (answer == selected_question.correct_answer):
                     ui.icon("check_circle").classes("text-positive text-h5 ml-2")
                     ui.label("Correct!").classes("text-positive text-h6 ml-2")
@@ -301,28 +315,56 @@ def question_page():
             if (grad_cam_model is not None):
                 paint_grad_cam(grad_cam_model)
 
-    def submit_answer(answer):
-        global selected_question
-        # Stop the countdown when an answer is submitted
-        stop_countdown()
-        
-        selected_question.user_answer = answer
+    def show_answer_dialog(answer):
+        # Create a dialog to show results
         with ui.dialog().props("full-width persistent") as dialog, ui.card():
             with ui.card_section().classes("scroll"):
                 with ui.grid().classes("w-full p-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"):
                 
                     answer_panel(selected_question.user_answer, "Your Answer") 
                     answer_panel(selected_question.llm_answer, "ChatGPT-4o-mini Answer", rational=selected_question.llm_rational, time=selected_question.llm_answer_time)
-                    answer_panel(selected_question.model_answer1, "Classification Model Answer", time=selected_question.model_time0, grad_cam_model=Models.ClassificationModel)
-                    answer_panel(selected_question.model_answer2, "ResNet Model Answer", time=selected_question.model_time1, grad_cam_model=Models.ResNetModel)
-                    answer_panel(selected_question.model_answer3, "EfficientNet Model Answer", time=selected_question.model_time2, grad_cam_model=Models.EfficientNetModel)
-                    answer_panel(selected_question.model_answer4, "VGG Model Answer", time=selected_question.model_time3, grad_cam_model=Models.VGGModel)
+                    
+                    # Create placeholders for model answers that will be updated after inference
+                    model_answer_cards = []
+                    for i, model_name in enumerate(["Classification Model", "ResNet Model", "EfficientNet Model", "VGG Model"]):
+                        with ui.card().classes("w-full mb-4 p-4") as card:
+                            ui.label(f"{model_name} Answer").classes("text-h6 text-primary mb-2")
+                            ui.label("Loading...").classes("text-h5 font-bold")
+                            model_answer_cards.append(card)
+                    
+                    # Run model inference and update UI when complete
+                    async def run_inference_and_update():
+                        await run_model_answer()
+                        # Update the model answer cards with results
+                        model_results = [
+                            (selected_question.model_answer1, selected_question.model_time0, Models.ClassificationModel),
+                            (selected_question.model_answer2, selected_question.model_time1, Models.ResNetModel),
+                            (selected_question.model_answer3, selected_question.model_time2, Models.EfficientNetModel),
+                            (selected_question.model_answer4, selected_question.model_time3, Models.VGGModel)
+                        ]
+                        
+                        for i, (model_answer, model_time, grad_cam_model) in enumerate(model_results):
+                            # Clear the card content
+                            model_answer_cards[i].clear()
+                            # Add the updated content
+                            with model_answer_cards[i]:
+                                answer_panel(model_answer, f"{['Classification', 'ResNet', 'EfficientNet', 'VGG'][i]} Model Answer", 
+                                            time=model_time, grad_cam_model=grad_cam_model)
+                    
+                    # Start the inference process
+                    asyncio.create_task(run_inference_and_update())
                 
-            # with ui.row().classes("justify-end w-full gap-2 mt-4"):
             with ui.card_actions().classes("justify-end w-full gap-2 mt-4"):
                     ui.button("Next Question", on_click=next_question).props("color=primary icon=navigate_next")
-                    # ui.button("Close", on_click=lambda: dialog.close()).props("flat icon=close")
             dialog.open()
+    
+    def submit_answer(answer):
+        global selected_question
+        # Stop the countdown when an answer is submitted
+        stop_countdown()
+        
+        selected_question.user_answer = answer
+        show_answer_dialog(answer)
     
     def next_question():
         global questions
@@ -332,7 +374,8 @@ def question_page():
         paint_question_panel.refresh()
         paint_grad_cam.refresh()
         asyncio.create_task(run_llm_answer())
-        asyncio.create_task(run_model_answer())
+        # Remove model inference from here - it will be done when answer is submitted
+        # asyncio.create_task(run_model_answer()) 
         # Start the countdown for the new question
         start_countdown()
         
@@ -340,7 +383,8 @@ def question_page():
     selected_question = questions[0]
     paint_question_panel()  
     asyncio.create_task(run_llm_answer())
-    asyncio.create_task(run_model_answer()) 
+    # Remove model inference from here - it will be done when answer is submitted
+    # asyncio.create_task(run_model_answer()) 
     # Start the countdown for the first question
     start_countdown()
     
