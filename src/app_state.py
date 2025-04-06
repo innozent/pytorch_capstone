@@ -35,11 +35,17 @@ class Question:
         self.choices : list[str] = choices
         self.correct_answer : int = correct_answer
         self.user_answer : int | None = None 
-        self.llm_answer : int | None = None
-        self.model_answer : int | None = None
         self.user_time : float | None = None
+        self.llm_answer : int | None = None
         self.llm_time : float | None = None
-        self.model_time : float | None = None 
+        self.model_answer0 : int | None = None
+        self.model_answer1 : int | None = None
+        self.model_answer2 : int | None = None
+        self.model_answer3 : int | None = None
+        self.model_time0 : float | None = None 
+        self.model_time1 : float | None = None 
+        self.model_time2 : float | None = None 
+        self.model_time3 : float | None = None 
         self.llm_rational : str | None = None
     
     def is_user_correct(self):

@@ -304,8 +304,7 @@ def grad_cam(app_state, model_name: str, question: Question) -> tuple[Image.Imag
         for module in original_model.features:
             if isinstance(module, nn.Conv2d):
                 target_layer = module
-        print(original_model.features)
-        print(target_layer)
+                
     if target_layer is None:
         raise ValueError(f"Could not find appropriate target layer for {model_name}")
     

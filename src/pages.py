@@ -5,7 +5,7 @@ import random
 import asyncio
 from src.app_state import app_state, Question, ModelTraining
 from src.open_router import open_router
-from src.model_train import train_model, infer_model, grad_cam
+from src.model_train import train_model, infer_model, grad_cam, Models
 import plotly.express as px
 import time
 import pandas as pd
@@ -13,7 +13,6 @@ import pandas as pd
 def model_page(): 
     async def on_train_model(model_training: ModelTraining): 
         model = model_training.get_model_function()
-        print(model_training.model_name)
         (training_loss, training_accuracy, validation_loss, validation_accuracy, training_time) = await run.cpu_bound(train_model, app_state, model, model_training.model_file_name)
         
         model_training.training_loss = training_loss
@@ -117,7 +116,6 @@ def kaggle_page():
             ui.label("Please select a class")
     
     def load_data():
-        print("Loading data...")
         path = kagglehub.dataset_download("shawngano/gano-cat-breed-image-collection") 
         cat_pathname = os.path.join(path, os.listdir(path)[0])
         app_state.image_path = cat_pathname
@@ -162,13 +160,12 @@ def get_llm_answer(question: Question | None) -> str | None:
     
     where choice is 0, 1, 2, or 3 and rational is a short rational for the answer'''
     llm_answer = open_router.get_response(question_text, question.image_path)
-    print(llm_answer)
     return llm_answer   
 
-def get_model_answer(question: Question | None) -> str | None:
+def get_model_answer(question: Question | None, model_name: str) -> str | None:
     if (question is None):
         return None
-    model_answer = infer_model(app_state, app_state.model_trainings[-1].model_name, question)
+    model_answer = infer_model(app_state, model_name, question)
     if (model_answer is None):
         return None
     return model_answer
@@ -211,6 +208,7 @@ def question_page():
             remaining_time -= 1
         
         if countdown_active:
+            print("Time ran out")
             # Time ran out, submit a random answer
             if selected_question and selected_question.user_answer is None:
                 ui.notify("Time's up! Submitting random answer.", color="warning")
@@ -250,14 +248,38 @@ def question_page():
         
     async def run_model_answer():
         start_time = time.time()
-        model_answer = await run.cpu_bound(get_model_answer, selected_question)  
-        selected_question.model_answer = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
-                                         1 if model_answer.lower() == selected_question.choices[1].lower()  else \
-                                         2 if model_answer.lower() == selected_question.choices[2].lower()  else \
-                                         3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
-        selected_question.model_answer_time = time.time() - start_time
-                 
-    def answer_panel(answer, title: str):
+        model_answer = await run.cpu_bound(get_model_answer, selected_question, Models.ClassificationModel)  
+        selected_question.model_answer1 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+                                          1 if model_answer.lower() == selected_question.choices[1].lower()  else \
+                                          2 if model_answer.lower() == selected_question.choices[2].lower()  else \
+                                          3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
+        selected_question.model_time0 = time.time() - start_time
+        
+        start_time = time.time()
+        model_answer = await run.cpu_bound(get_model_answer, selected_question, Models.ResNetModel)  
+        selected_question.model_answer2 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+                                          1 if model_answer.lower() == selected_question.choices[1].lower()  else \
+                                          2 if model_answer.lower() == selected_question.choices[2].lower()  else \
+                                          3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
+        selected_question.model_time1 = time.time() - start_time
+        
+        start_time = time.time()
+        model_answer = await run.cpu_bound(get_model_answer, selected_question, Models.EfficientNetModel)  
+        selected_question.model_answer3 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+                                          1 if model_answer.lower() == selected_question.choices[1].lower()  else \
+                                          2 if model_answer.lower() == selected_question.choices[2].lower()  else \
+                                          3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
+        selected_question.model_time2 = time.time() - start_time
+        
+        start_time = time.time()
+        model_answer = await run.cpu_bound(get_model_answer, selected_question, Models.VGGModel)  
+        selected_question.model_answer4 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+                                          1 if model_answer.lower() == selected_question.choices[1].lower()  else \
+                                          2 if model_answer.lower() == selected_question.choices[2].lower()  else \
+                                          3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
+        selected_question.model_time3 = time.time() - start_time
+
+    def answer_panel(answer, title: str, rational: str | None = None, time: float | None = None, grad_cam_model: str | None = None):
         with ui.card().classes("w-full mb-4 p-4"):
             ui.label(title).classes("text-h6 text-primary mb-2")
             with ui.row().classes("items-center"):
@@ -270,22 +292,36 @@ def question_page():
                     ui.label("Incorrect!").classes("text-negative text-h6 ml-2")
                     ui.label(f"The correct answer was: {selected_question.choices[selected_question.correct_answer]}").classes("text-body1 mt-2 text-weight-medium")
                 
-                 
+            if (rational is not None):
+                ui.label(rational).classes("text-body1 mt-2 text-weight-medium")
+                
+            if (time is not None):
+                ui.label(f"Time taken: {time:.2f} seconds").classes("text-body1 mt-2 text-weight-medium")
+                
+            if (grad_cam_model is not None):
+                paint_grad_cam(grad_cam_model)
+
     def submit_answer(answer):
         global selected_question
         # Stop the countdown when an answer is submitted
         stop_countdown()
         
         selected_question.user_answer = answer
-        with ui.dialog() as dialog, ui.card():
-            with ui.column().classes("w-full p-4"):
-                answer_panel(selected_question.user_answer, "Your Answer") 
-                answer_panel(selected_question.llm_answer, "LLM Answer")
-                answer_panel(selected_question.model_answer, "Model Answer")
+        with ui.dialog().props("full-width persistent") as dialog, ui.card():
+            with ui.card_section().classes("scroll"):
+                with ui.grid().classes("w-full p-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"):
                 
-                with ui.row().classes("justify-end w-full gap-2 mt-4"):
+                    answer_panel(selected_question.user_answer, "Your Answer") 
+                    answer_panel(selected_question.llm_answer, "ChatGPT-4o-mini Answer", rational=selected_question.llm_rational, time=selected_question.llm_answer_time)
+                    answer_panel(selected_question.model_answer1, "Classification Model Answer", time=selected_question.model_time0, grad_cam_model=Models.ClassificationModel)
+                    answer_panel(selected_question.model_answer2, "ResNet Model Answer", time=selected_question.model_time1, grad_cam_model=Models.ResNetModel)
+                    answer_panel(selected_question.model_answer3, "EfficientNet Model Answer", time=selected_question.model_time2, grad_cam_model=Models.EfficientNetModel)
+                    answer_panel(selected_question.model_answer4, "VGG Model Answer", time=selected_question.model_time3, grad_cam_model=Models.VGGModel)
+                
+            # with ui.row().classes("justify-end w-full gap-2 mt-4"):
+            with ui.card_actions().classes("justify-end w-full gap-2 mt-4"):
                     ui.button("Next Question", on_click=next_question).props("color=primary icon=navigate_next")
-                    ui.button("Close", on_click=lambda: dialog.close()).props("flat icon=close")
+                    # ui.button("Close", on_click=lambda: dialog.close()).props("flat icon=close")
             dialog.open()
     
     def next_question():
@@ -309,13 +345,11 @@ def question_page():
     start_countdown()
     
     @ui.refreshable
-    def paint_grad_cam():
-        (image, label) = grad_cam(app_state, app_state.model_trainings[3].model_name, selected_question)
+    def paint_grad_cam(model_name: str):
+        (image, label) = grad_cam(app_state, model_name, selected_question)
         ui.image(image).classes("rounded-lg")
-        ui.label(label).classes("text-h6")
     
-    llm_answer_label = ui.label("Loading LLM Answer...").classes("text-h6")
-    paint_grad_cam()
+    llm_answer_label = ui.label("Loading LLM Answer...").classes("text-h6 hidden")
 
 def open_router_page():
 
