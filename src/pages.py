@@ -159,7 +159,8 @@ def get_llm_answer(question: Question | None) -> str | None:
     choice|rational
     
     where choice is 0, 1, 2, or 3 and rational is a short rational for the answer'''
-    llm_answer = open_router.get_response(question_text, question.image_path)
+    #llm_answer = open_router.get_response(question_text, question.image_path)
+    llm_answer = "1|This is a test answer"
     return llm_answer   
 
 def get_model_answer(question: Question | None, model_name: str) -> str | None:
@@ -251,8 +252,8 @@ def question_page():
         
     async def run_llm_answer():
         start_time = time.time()
-        # llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
-        llm_answer = "1|This is a test answer"
+        llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
+        # llm_answer = "1|This is a test answer"
         llm_answer_label.text = llm_answer
         
         selected_question.llm_answer = int(llm_answer.split("|")[0])
@@ -262,7 +263,7 @@ def question_page():
     async def run_model_answer():
         start_time = time.time()
         model_answer = await run.cpu_bound(get_model_answer, selected_question, Models.ClassificationModel)  
-        selected_question.model_answer1 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+        selected_question.model_answer0 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
                                           1 if model_answer.lower() == selected_question.choices[1].lower()  else \
                                           2 if model_answer.lower() == selected_question.choices[2].lower()  else \
                                           3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
@@ -270,7 +271,7 @@ def question_page():
         
         start_time = time.time()
         model_answer = await run.cpu_bound(get_model_answer, selected_question, Models.ResNetModel)  
-        selected_question.model_answer2 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+        selected_question.model_answer1 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
                                           1 if model_answer.lower() == selected_question.choices[1].lower()  else \
                                           2 if model_answer.lower() == selected_question.choices[2].lower()  else \
                                           3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
@@ -278,7 +279,7 @@ def question_page():
         
         start_time = time.time()
         model_answer = await run.cpu_bound(get_model_answer, selected_question, Models.EfficientNetModel)  
-        selected_question.model_answer3 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+        selected_question.model_answer2 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
                                           1 if model_answer.lower() == selected_question.choices[1].lower()  else \
                                           2 if model_answer.lower() == selected_question.choices[2].lower()  else \
                                           3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
@@ -286,43 +287,45 @@ def question_page():
         
         start_time = time.time()
         model_answer = await run.cpu_bound(get_model_answer, selected_question, Models.VGGModel)  
-        selected_question.model_answer4 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
+        selected_question.model_answer3 = 0 if model_answer.lower() == selected_question.choices[0].lower()  else \
                                           1 if model_answer.lower() == selected_question.choices[1].lower()  else \
                                           2 if model_answer.lower() == selected_question.choices[2].lower()  else \
                                           3 if model_answer.lower() == selected_question.choices[3].lower()  else -1
         selected_question.model_time3 = time.time() - start_time
 
-    def answer_panel(answer, title: str, rational: str | None = None, time: float | None = None, grad_cam_model: str | None = None):
-        print(f"answer: {answer}, title: {title}, rational: {rational}, time: {time}, grad_cam_model: {grad_cam_model}, correct_answer: {selected_question.correct_answer}")
-        with ui.card().classes("w-full mb-4 p-4"):
-            ui.label(title).classes("text-h6 text-primary mb-2")
-            with ui.row().classes("items-center"):
-                ui.label(f"{selected_question.choices[answer]}" if answer != -1 else "I don't know").classes("text-h5 font-bold")
-                if (answer == selected_question.correct_answer):
-                    ui.icon("check_circle").classes("text-positive text-h5 ml-2")
-                    ui.label("Correct!").classes("text-positive text-h6 ml-2")
-                else:
-                    ui.icon("cancel").classes("text-negative text-h5 ml-2")
-                    ui.label("Incorrect!").classes("text-negative text-h6 ml-2")
-                    ui.label(f"The correct answer was: {selected_question.choices[selected_question.correct_answer]}").classes("text-body1 mt-2 text-weight-medium")
-                
-            if (rational is not None):
-                ui.label(rational).classes("text-body1 mt-2 text-weight-medium")
-                
-            if (time is not None):
-                ui.label(f"Time taken: {time:.2f} seconds").classes("text-body1 mt-2 text-weight-medium")
-                
-            if (grad_cam_model is not None):
-                paint_grad_cam(grad_cam_model)
+    def answer_panel(answer, title: str, rational: str | None = None, time_taken: float | None = None, grad_cam_model: str | None = None):
+        print(f"answer: {answer}, title: {title} {"({time_taken:.2f} seconds)" if time_taken is not None else ""}, rational: {rational}, time_taken: {time_taken}, grad_cam_model: {grad_cam_model}, correct_answer: {selected_question.correct_answer}")
+        # with ui.card().classes("w-full mb-4 p-4"):
+        ui.label(f"{title} {f'({time_taken:.2f} seconds)' if time_taken is not None else ''}").classes("text-h6 text-primary")
+        with ui.row().classes("items-center"):
+            ui.label(f"{selected_question.choices[answer]}" if answer != -1 else "I don't know").classes("text-h5 font-bold")
+            if (answer == selected_question.correct_answer):
+                ui.icon("check_circle").classes("text-positive text-h5 ml-2")
+                ui.label("Correct!").classes("text-positive text-h6 ml-2")
+            else:
+                ui.icon("cancel").classes("text-negative text-h5 ml-2")
+                ui.label("Incorrect!").classes("text-negative text-h6 ml-2")
+                ui.label(f"The correct answer was: {selected_question.choices[selected_question.correct_answer]}").classes("text-body1 mt-2 text-weight-medium")
+            
+        if (rational is not None):
+            ui.label(rational).classes("text-body1 text-weight-medium")
+             
+        if (grad_cam_model is not None):
+            paint_grad_cam(grad_cam_model)
 
     def show_answer_dialog(answer):
         # Create a dialog to show results
-        with ui.dialog().props("full-width persistent") as dialog, ui.card():
+        with ui.dialog().props("maximized persistent") as dialog, ui.card():
             with ui.card_section().classes("scroll"):
-                with ui.grid().classes("w-full p-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"):
+                with ui.grid().classes("w-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"):
                 
-                    answer_panel(selected_question.user_answer, "Your Answer") 
-                    answer_panel(selected_question.llm_answer, "ChatGPT-4o-mini Answer", rational=selected_question.llm_rational, time=selected_question.llm_answer_time)
+                    with ui.card().classes("w-full mb-4 p-4"):
+                        answer_panel(selected_question.user_answer, "Your Answer") 
+                    
+                    # Create placeholder for LLM answer
+                    with ui.card().classes("w-full mb-4 p-4") as llm_card:
+                        ui.label("ChatGPT-4o-mini Answer").classes("text-h6 text-primary mb-2")
+                        ui.label("Loading...").classes("text-h5 font-bold")
                     
                     # Create placeholders for model answers that will be updated after inference
                     model_answer_cards = []
@@ -332,15 +335,24 @@ def question_page():
                             ui.label("Loading...").classes("text-h5 font-bold")
                             model_answer_cards.append(card)
                     
-                    # Run model inference and update UI when complete
+                    # Run LLM and model inference and update UI when complete
                     async def run_inference_and_update():
+                        # Run LLM inference
+                        await run_llm_answer()
+                        # Update LLM card
+                        llm_card.clear()
+                        with llm_card:
+                            answer_panel(selected_question.llm_answer, "ChatGPT-4o-mini Answer", 
+                                        rational=selected_question.llm_rational, time_taken=selected_question.llm_answer_time)
+                        
+                        # Run model inference
                         await run_model_answer()
                         # Update the model answer cards with results
                         model_results = [
-                            (selected_question.model_answer1, selected_question.model_time0, Models.ClassificationModel),
-                            (selected_question.model_answer2, selected_question.model_time1, Models.ResNetModel),
-                            (selected_question.model_answer3, selected_question.model_time2, Models.EfficientNetModel),
-                            (selected_question.model_answer4, selected_question.model_time3, Models.VGGModel)
+                            (selected_question.model_answer0, selected_question.model_time0, Models.ClassificationModel),
+                            (selected_question.model_answer1, selected_question.model_time1, Models.ResNetModel),
+                            (selected_question.model_answer2, selected_question.model_time2, Models.EfficientNetModel),
+                            (selected_question.model_answer3, selected_question.model_time3, Models.VGGModel)
                         ]
                         
                         for i, (model_answer, model_time, grad_cam_model) in enumerate(model_results):
@@ -349,15 +361,32 @@ def question_page():
                             # Add the updated content
                             with model_answer_cards[i]:
                                 answer_panel(model_answer, f"{['Classification', 'ResNet', 'EfficientNet', 'VGG'][i]} Model Answer", 
-                                            time=model_time, grad_cam_model=grad_cam_model)
-                    
+                                            time_taken=model_time, grad_cam_model=grad_cam_model)
+                        
+                        # Refresh the result label to show updated statistics
+                        paint_result_label.refresh()
+                        
                     # Start the inference process
                     asyncio.create_task(run_inference_and_update())
                 
-            with ui.card_actions().classes("justify-end w-full gap-2 mt-4"):
-                    ui.button("Next Question", on_click=next_question).props("color=primary icon=navigate_next")
+            with ui.card_actions().classes("justify-between w-full gap-2 mt-4"):
+                paint_result_label()
+                ui.button("Next Question", on_click=next_question).props("color=primary icon=navigate_next")
             dialog.open()
-    
+          
+    @ui.refreshable
+    def paint_result_label():
+        global questions 
+        user_correct = sum(1 for question in questions if question.user_answer == question.correct_answer)
+        llm_correct = sum(1 for question in questions if question.llm_answer == question.correct_answer)
+        model1_correct = sum(1 for question in questions if question.model_answer0 == question.correct_answer)
+        model2_correct = sum(1 for question in questions if question.model_answer1 == question.correct_answer)
+        model3_correct = sum(1 for question in questions if question.model_answer2 == question.correct_answer)
+        model4_correct = sum(1 for question in questions if question.model_answer3 == question.correct_answer)
+        
+        # Debug print removed for cleaner code
+        ui.label(f"Correct Answers → You: {user_correct} | ChatGPT: {llm_correct} | Classification: {model1_correct} | ResNet: {model2_correct} | EfficientNet: {model3_correct} | VGG: {model4_correct}").classes("text-h6 text-primary font-medium")
+        
     def submit_answer(answer):
         global selected_question
         # Stop the countdown when an answer is submitted
@@ -373,25 +402,23 @@ def question_page():
         selected_question = questions[-1]
         paint_question_panel.refresh()
         paint_grad_cam.refresh()
-        asyncio.create_task(run_llm_answer())
-        # Remove model inference from here - it will be done when answer is submitted
-        # asyncio.create_task(run_model_answer()) 
+        # Remove LLM inference from here - it will be done when answer is submitted
+        # asyncio.create_task(run_llm_answer())
         # Start the countdown for the new question
         start_countdown()
         
     questions.append(random_question())
     selected_question = questions[0]
     paint_question_panel()  
-    asyncio.create_task(run_llm_answer())
-    # Remove model inference from here - it will be done when answer is submitted
-    # asyncio.create_task(run_model_answer()) 
+    # Remove LLM inference from here - it will be done when answer is submitted
+    # asyncio.create_task(run_llm_answer())
     # Start the countdown for the first question
     start_countdown()
     
     @ui.refreshable
     def paint_grad_cam(model_name: str):
-        (image, label) = grad_cam(app_state, model_name, selected_question)
-        ui.image(image).classes("rounded-lg")
+        (image, _) = grad_cam(app_state, model_name, selected_question)
+        ui.image(image).classes("rounded-lg h-[calc(20vh)]").props("fit=contain")
     
     llm_answer_label = ui.label("Loading LLM Answer...").classes("text-h6 hidden")
 
