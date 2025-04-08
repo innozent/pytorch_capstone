@@ -57,18 +57,23 @@ def model_page():
                                                    y="accuracy", 
                                                    range_y=[0, 100],
                                                    color="accuracy",
-                                                   title="Model Accuracy")
+                                                   color_continuous_scale=["red","yellow", "green"],
+                                                   title="Model Accuracy",
+                                                   labels={"accuracy": "Accuracy", "model_name": "Model"})
                 ui.plotly(fig_accuracy)
                 
                 # Create loss chart
                 fig_loss = px.bar(chart_model, x="model_name", 
                                                y="loss", 
                                                color="loss",
-                                               title="Model Loss")
+                                               color_continuous_scale=["green","yellow", "red"],
+                                               title="Model Loss",
+                                               labels={"loss": "Loss", "model_name": "Model"})
                 ui.plotly(fig_loss)
                 
                 fig_training_loss = px.line(line_df, y=line_df.columns[1:], 
-                                            title="Model Training Loss")
+                                            title="Model Training Loss",
+                                            labels={"index": "Epoch", "value": "Loss", "variable": "Model"})
                 fig_training_loss.update_layout(
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 )
@@ -77,7 +82,8 @@ def model_page():
                 
                 fig_training_accuracy = px.line(acc_df, y=acc_df.columns[1:], 
                                                 range_y=[0, 100],
-                                            title="Model Training Accuracy")
+                                                title="Model Training Accuracy",
+                                                labels={"index": "Epoch", "value": "Accuracy", "variable": "Model"})
                 fig_training_accuracy.update_layout(
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 )
