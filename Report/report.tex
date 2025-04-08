@@ -1,0 +1,141 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{booktabs}
+\usepackage{float}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fontspec}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+
+% Modern geometry settings
+\geometry{a4paper, margin=1in}
+
+% Modern colors
+\definecolor{maincolor}{RGB}{41, 128, 185}
+\definecolor{secondcolor}{RGB}{52, 73, 94}
+\definecolor{accentcolor}{RGB}{231, 76, 60}
+
+% Modern section formatting
+\titleformat{\section}
+  {\normalfont\Large\bfseries\color{maincolor}}
+  {\thesection}{1em}{}[\titlerule]
+  
+\titleformat{\subsection}
+  {\normalfont\large\bfseries\color{secondcolor}}
+  {\thesubsection}{1em}{}
+
+% Modern list formatting
+\setlist[itemize]{leftmargin=*,label=\textcolor{maincolor}{$\bullet$}}
+
+% Modern header/footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\textcolor{secondcolor}{Cat Breed Classification}}
+\fancyhead[R]{\textcolor{secondcolor}{\thepage}}
+\fancyfoot[C]{\textcolor{secondcolor}{PyTorch Capstone Project}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0.4pt}
+
+% Hyperref settings
+\hypersetup{
+    colorlinks=true,
+    linkcolor=maincolor,
+    filecolor=maincolor,      
+    urlcolor=accentcolor,
+    citecolor=maincolor,
+}
+
+\title{\textcolor{maincolor}{\Huge PyTorch Capstone Project Report}\\
+\textcolor{secondcolor}{\Large Cat Breed Classification System}}
+\author{\textcolor{secondcolor}{Wiwat Pholsomboon}}
+\date{\textcolor{secondcolor}{April 8, 2025}}
+
+\begin{document}
+
+\maketitle
+
+\section{Introduction}
+This project is to study on using PyTorch model to classify cat images. It implements Grad-CAM to visualized the attention of the model on one of CNN layers. ChatGPT-4o-mini is used to identify the image and given the rationale of result. Quiz is implemented to show the accuracy of each model along with human accuracy.
+
+\section{Dataset}
+\begin{itemize}
+    \item Dataset is from Kaggle from 'Geno Cat Breed Image Collection' dataset (\url{https://www.kaggle.com/datasets/shawngano/gano-cat-breed-image-collection})
+    \item Contains 15 cat breeds with 375 photos for each breed (total 5,625 photos)
+    \item Preprocessing step
+    \begin{itemize}
+        \item Resize to 256x256
+        \item Random Crop to 224x224
+        \item Random Horizontal Flip
+        \item Random Rotation
+        \item Convert to Tensor
+        \item Normalize with mean and std of ImageNet
+    \end{itemize}
+\end{itemize}
+
+\section{Model Architecture}
+\begin{itemize}
+    \item Architecture of implemented models:
+    \begin{itemize}
+        \item 5 Convolutional Layers 
+        \item 2 Fully Connected Layers
+        \item 1 Dropout Layer in between the two FC Layers
+    \end{itemize}
+    \item Transfer Learning Models:
+    \begin{itemize}
+        \item ResNet18 Model (Weights: ImageNet)
+        \item EfficientNetB2 Model (Weights: ImageNet)
+        \item VGG16 Model (Weights: ImageNet)
+    \end{itemize}
+\end{itemize}
+
+\section{Training Methodology}
+\begin{itemize}
+    \item Training process and hyperparameters
+    \begin{itemize}
+        \item Training Batch Size: 128
+        \item Learning Rate: 0.001
+        \item Momentum: 0.9
+        \item Epochs: 5
+        \item Loss Function: Cross Entropy Loss
+        \item Optimizer: SGD
+    \end{itemize}
+\end{itemize}
+
+\section{Results and Evaluation}
+\begin{itemize}
+    \item Compare Training Accuracy and Loss of each model.
+    \item Compare Training Time of each model.
+    \item Quiz is implemented to show the accuracy of each model along with human accuracy and ChatGPT-4o-mini accuracy.
+\end{itemize}
+
+\section{Visualization and Interpretability}
+\begin{itemize}
+    \item Implemented Grad-CAM to compared and visualize each model's attention on the image
+    \item ChatGPT-4o-mini will give the rationale of its answer.
+\end{itemize}
+
+\section{Challenges and Solutions}
+\begin{itemize}
+    \item Grad-CAM target layer for each model architecture is different and need to be selected manually.
+    \item CNN model accuracy is very low, even worse than random guess.
+\end{itemize}
+
+\section{Future Improvements}
+\begin{itemize}
+    \item Apply more data augmentation techniques
+\end{itemize}
+
+\section{Conclusion}
+\begin{itemize}
+    \item Summary of findings
+    \item Final model selection and justification
+    \item Project outcomes and achievements
+\end{itemize}
+
+\end{document}

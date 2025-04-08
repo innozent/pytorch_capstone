@@ -11,7 +11,7 @@ def index_page():
     main_container()
     with ui.header():
         ui.button(on_click=lambda: left_drawer.toggle(), icon='menu').props('flat color=white')
-        ui.label("Cat Breed Quiz").classes("text-h5 font-bold playwrite-hu")
+        ui.label("Cat Quiz").classes("text-h5 font-bold playwrite-hu")
         
     with ui.left_drawer(fixed=True).props("width=200").classes("border-r border-gray-200") as left_drawer:
         paint_navigation_drawer()

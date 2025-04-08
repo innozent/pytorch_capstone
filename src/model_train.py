@@ -1,15 +1,15 @@
+import os
+import time 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+import numpy as np
 import torchvision
 import torchvision.transforms as transforms
 import torch.nn.functional as F
 from PIL import Image
-import os
+from torch.utils.data import Dataset, DataLoader
 from src.app_state import ModelTraining, Question, AppState
-import time 
-import numpy as np
 
 class Models:
     ClassificationModel = "Classification Model"
@@ -241,19 +241,6 @@ def infer_model(app_state: AppState, model_name: str, question: Question) -> str
         return app_state.class_names[predicted.item()] 
     
 def grad_cam(app_state, model_name: str, question: Question) -> tuple[Image.Image, str]:
-    """
-    Implements GradCAM visualization for model interpretability without using OpenCV.
-    Works with any model architecture by dynamically finding the appropriate convolutional layer.
-    Returns PIL Image ready to use with NiceGUI's ui.image component.
-    
-    Args:
-        app_state: Application state containing model information
-        model_name: Name of the model to use
-        question: Question containing the image path
-        
-    Returns:
-        tuple: (PIL Image of visualization, predicted class name)
-    """
     model_training = next((model_training for model_training in app_state.model_trainings 
                           if model_training.model_name == model_name), None)
     if model_training is None:
@@ -295,10 +282,8 @@ def grad_cam(app_state, model_name: str, question: Question) -> tuple[Image.Imag
         # For ResNet, use the last layer in layer4
         target_layer = original_model.layer4[-1].conv2
     elif model_name == Models.EfficientNetModel:
-        # For EfficientNet, use the last conv layer in features
-        # Navigate to the last MBConv block's last conv layer
-        target_layer = original_model.features[-1][0]
-        
+        # For EfficientNet, use the last conv layer in features 
+        target_layer = original_model.features[-1][0] 
     elif model_name == Models.VGGModel:
         # For VGG, use the last conv layer in features
         for module in original_model.features:

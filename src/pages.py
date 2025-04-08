@@ -1,14 +1,14 @@
-from nicegui import ui, run
-import kagglehub
 import os
+import time
 import random
 import asyncio
+import kagglehub
+import pandas as pd
+import plotly.express as px
+from nicegui import ui, run
 from src.app_state import app_state, Question, ModelTraining
 from src.open_router import open_router
 from src.model_train import train_model, infer_model, grad_cam, Models
-import plotly.express as px
-import time
-import pandas as pd
 
 def model_page(): 
     async def on_train_model(model_training: ModelTraining): 
@@ -116,7 +116,7 @@ def kaggle_page():
             ui.label("Please select a class")
     
     def load_data():
-        path = kagglehub.dataset_download("shawngano/gano-cat-breed-image-collection") 
+        path = kagglehub.dataset_download("shawngano/gano-cat-breed-image-collection", path="data") 
         cat_pathname = os.path.join(path, os.listdir(path)[0])
         app_state.image_path = cat_pathname
         app_state.class_names = [pathname for pathname in os.listdir(cat_pathname) if os.path.isdir(os.path.join(cat_pathname, pathname))]
@@ -143,8 +143,8 @@ def kaggle_page():
     
 questions : list[Question] = []
 selected_question : Question = None
-count_down_time = 10
-
+count_down_time = 15 
+ 
 def get_llm_answer(question: Question | None) -> str | None:
     if (question is None):
         return None
@@ -159,8 +159,8 @@ def get_llm_answer(question: Question | None) -> str | None:
     choice|rational
     
     where choice is 0, 1, 2, or 3 and rational is a short rational for the answer'''
-    #llm_answer = open_router.get_response(question_text, question.image_path)
-    llm_answer = "1|This is a test answer"
+    llm_answer = open_router.get_response(question_text, question.image_path)
+    #llm_answer = "1|This is a test answer"
     return llm_answer   
 
 def get_model_answer(question: Question | None, model_name: str) -> str | None:
@@ -183,6 +183,8 @@ def question_page():
     countdown_label = None
     remaining_time = count_down_time
     
+    result_dialog = ui.dialog().props("maximized persistent")
+    
     def countdown_timer_callback():
         nonlocal remaining_time, countdown_active
         if not countdown_active or remaining_time <= 0:
@@ -200,7 +202,7 @@ def question_page():
                 # Use a random answer and ensure the popup is shown
                 random_answer = random.randint(0, 3)
                 selected_question.user_answer = random_answer
-                show_answer_dialog(random_answer)
+                show_answer_dialog()
             # Make sure to stop the countdown when it completes
             stop_countdown()
     
@@ -253,7 +255,6 @@ def question_page():
     async def run_llm_answer():
         start_time = time.time()
         llm_answer = await run.cpu_bound(get_llm_answer, selected_question) 
-        # llm_answer = "1|This is a test answer"
         llm_answer_label.text = llm_answer
         
         selected_question.llm_answer = int(llm_answer.split("|")[0])
@@ -312,10 +313,10 @@ def question_page():
              
         if (grad_cam_model is not None):
             paint_grad_cam(grad_cam_model)
-
-    def show_answer_dialog(answer):
+            
+    def show_answer_dialog():
         # Create a dialog to show results
-        with ui.dialog().props("maximized persistent") as dialog, ui.card():
+        with result_dialog, ui.card():
             with ui.card_section().classes("scroll"):
                 with ui.grid().classes("w-full grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2"):
                 
@@ -370,12 +371,11 @@ def question_page():
                     asyncio.create_task(run_inference_and_update())
                 
             with ui.card_actions().classes("justify-between w-full gap-2 mt-4"):
-                paint_result_label()
-                ui.button("Next Question", on_click=next_question).props("color=primary icon=navigate_next")
-            dialog.open()
+                paint_result_label(result_dialog)
+            result_dialog.open()
           
     @ui.refreshable
-    def paint_result_label():
+    def paint_result_label(result_dialog):
         global questions 
         user_correct = sum(1 for question in questions if question.user_answer == question.correct_answer)
         llm_correct = sum(1 for question in questions if question.llm_answer == question.correct_answer)
@@ -385,7 +385,24 @@ def question_page():
         model4_correct = sum(1 for question in questions if question.model_answer3 == question.correct_answer)
         
         # Debug print removed for cleaner code
-        ui.label(f"Correct Answers → You: {user_correct} | ChatGPT: {llm_correct} | Classification: {model1_correct} | ResNet: {model2_correct} | EfficientNet: {model3_correct} | VGG: {model4_correct}").classes("text-h6 text-primary font-medium")
+        with ui.row().classes("justify-between w-full"):
+            with ui.row().classes("justify-start"):
+                ui.label("You :").classes("text-h6 text-primary font-medium font-bold")
+                ui.label(f"{user_correct}").classes("text-h6 text-primary font-medium text-black")
+                ui.label("ChatGPT :").classes("text-h6 text-primary font-medium font-bold")
+                ui.label(f"{llm_correct}").classes("text-h6 text-primary font-medium text-black")
+                ui.label("Classification :").classes("text-h6 text-primary font-medium font-bold")
+                ui.label(f"{model1_correct}").classes("text-h6 text-primary font-medium text-black")
+                ui.label("ResNet :").classes("text-h6 text-primary font-medium font-bold")
+                ui.label(f"{model2_correct}").classes("text-h6 text-primary font-medium text-black")
+                ui.label("EfficientNet :").classes("text-h6 text-primary font-medium font-bold")
+                ui.label(f"{model3_correct}").classes("text-h6 text-primary font-medium text-black")
+                ui.label("VGG :").classes("text-h6 text-primary font-medium font-bold")
+                ui.label(f"{model4_correct}").classes("text-h6 text-primary font-medium text-black")
+                 
+            ui.button("Next Question", on_click=lambda: next_question(result_dialog)).props("color=primary icon=navigate_next")
+        
+        # ui.label(f"Score You: {user_correct} | ChatGPT: {llm_correct} | Classification: {model1_correct} | ResNet: {model2_correct} | EfficientNet: {model3_correct} | VGG: {model4_correct}").classes("text-h6 text-primary font-medium")
         
     def submit_answer(answer):
         global selected_question
@@ -393,13 +410,17 @@ def question_page():
         stop_countdown()
         
         selected_question.user_answer = answer
-        show_answer_dialog(answer)
+        show_answer_dialog()
     
-    def next_question():
+    def next_question(result_dialog):
         global questions
         global selected_question
         questions.append(random_question())
         selected_question = questions[-1]
+        
+        result_dialog.clear()
+        result_dialog.close()
+         
         paint_question_panel.refresh()
         paint_grad_cam.refresh()
         # Remove LLM inference from here - it will be done when answer is submitted
@@ -456,5 +477,4 @@ def open_router_page():
                 ui.button("Send", icon="send", on_click=lambda: open_router_response(query_text.value, image_path))
                       
     open_router_panel()
-    
     
