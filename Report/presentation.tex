@@ -75,6 +75,7 @@
         \item Implementation of Grad-CAM for visual explanation
         \item Integration with ChatGPT-4o-mini for image identification
         \item Interactive quiz system to compare model accuracy with human performance
+        \item Github: \href{https://github.com/innozent/pytorch_capstone}{https://github.com/innozent/pytorch\_capstone}
     \end{itemize}
 \end{frame}
 
@@ -114,6 +115,30 @@
             \item All pre-trained with ImageNet weights
         \end{itemize}
     \end{columns}
+\end{frame}
+\begin{frame}{Model Comparison}
+    \begin{center}
+        \textbf{\textcolor{maincolor}{Transfer Learning Models Comparison}}
+    \end{center}
+    \vspace{0.3cm}
+    \begin{table}
+        \small
+        \begin{tabular}{|p{0.28\textwidth}|p{0.28\textwidth}|p{0.28\textwidth}|}
+            \hline
+            \textbf{\textcolor{maincolor}{VGG16}} & \textbf{\textcolor{maincolor}{ResNet18}} & \textbf{\textcolor{maincolor}{EfficientNetB2}} \\
+            \hline
+            \textbf{Parameters:} 138M & \textbf{Parameters:} 11.7M & \textbf{Parameters:} 9.2M \\
+            \hline
+            \textbf{Layers:} 16 & \textbf{Layers:} 18 & \textbf{Layers:} 82 \\
+            \hline
+            \textbf{Key Features:} & \textbf{Key Features:} & \textbf{Key Features:} \\
+            - Simple architecture & - Residual blocks & - Compound scaling \\
+            - 3x3 convolutions & - Skip connections & - MBConv blocks \\
+            - Max pooling & - Batch normalization & - Swish activation  \\
+            - Dense layers & - Global average pooling & - Squeeze-and-excitation\\
+            \hline
+        \end{tabular}
+    \end{table}
 \end{frame}
 
 \begin{frame}{Training Methodology}
