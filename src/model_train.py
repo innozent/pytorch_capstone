@@ -166,7 +166,7 @@ def train_model(app_state,model: nn.Module, model_name: str) -> tuple[list[float
     validation_accuracy = []
     
     start_time = time.time()
-    for epoch in range(5):
+    for epoch in range(10):
         model.train()
         
         running_loss = 0.0

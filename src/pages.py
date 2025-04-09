@@ -5,6 +5,7 @@ import asyncio
 import kagglehub
 import pandas as pd
 import plotly.express as px
+import shutil
 from nicegui import ui, run
 from src.app_state import app_state, Question, ModelTraining
 from src.open_router import open_router
@@ -88,7 +89,23 @@ def model_page():
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 )
                 ui.plotly(fig_training_accuracy)
-                
+
+                fig_validation_loss = px.line(line_df, y=line_df.columns[1:], 
+                                                title="Model Validation Loss",
+                                                labels={"index": "Epoch", "value": "Loss", "variable": "Model"})
+                fig_validation_loss.update_layout(
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                )
+                ui.plotly(fig_validation_loss)
+
+                fig_validation_accuracy = px.line(acc_df, y=acc_df.columns[1:], 
+                                                range_y=[0, 100],
+                                                title="Model Validation Accuracy",
+                                                labels={"index": "Epoch", "value": "Accuracy", "variable": "Model"})
+                fig_validation_accuracy.update_layout(
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+                )
+                ui.plotly(fig_validation_accuracy)
         
 
     with ui.grid().classes("gap-2 md:gap-4 grid-cols-2 md:grid-cols-4"): 
@@ -122,7 +139,14 @@ def kaggle_page():
             ui.label("Please select a class")
     
     def load_data():
-        path = kagglehub.dataset_download("shawngano/gano-cat-breed-image-collection", path="data") 
+        path = kagglehub.dataset_download("shawngano/gano-cat-breed-image-collection") 
+
+        # Copy data to local folder
+        local_path = os.path.join(os.path.dirname(__file__), "data")
+        shutil.rmtree(local_path)
+        shutil.copytree(path, local_path)  
+        path = local_path 
+
         cat_pathname = os.path.join(path, os.listdir(path)[0])
         app_state.image_path = cat_pathname
         app_state.class_names = [pathname for pathname in os.listdir(cat_pathname) if os.path.isdir(os.path.join(cat_pathname, pathname))]

@@ -134,7 +134,7 @@ acs-*.bib
 *.sls
 
 # Project specific
-app_state.pkl
+*.pkl
 # Python specific
 __pycache__/
 *.py[cod]
