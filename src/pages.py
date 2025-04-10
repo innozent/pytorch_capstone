@@ -14,16 +14,31 @@ from src.model_train import train_model, infer_model, grad_cam, Models
 def model_page(): 
     async def on_train_model(model_training: ModelTraining): 
         model = model_training.get_model_function()
-        (training_loss, training_accuracy, validation_loss, validation_accuracy, training_time) = await run.cpu_bound(train_model, app_state, model, model_training.model_file_name)
+        (training_loss, training_accuracy, validation_loss, validation_accuracy, training_time) = await run.cpu_bound(train_model, app_state, model, model_training.model_file_name, model_training)
         
         model_training.training_loss = training_loss
         model_training.training_accuracy = training_accuracy
         model_training.validation_loss = validation_loss
         model_training.validation_accuracy = validation_accuracy
         model_training.training_time = training_time
+        
+        print(f"Training time: {training_time} seconds")
+        print(f"validation accuracy: {validation_accuracy * 100}%")
+        print(f"validation loss: {validation_loss}")
         app_state.save()
         
         ui.notify("Model trained", color="positive")
+        
+        
+    def reduce_list_length(list: list[str], length: int):
+        if len(list) <= length:
+            return list
+        else:
+            return_list = []
+            for i, val in enumerate(list):
+                if i % 2 == 0:
+                    return_list.append(val)
+            return return_list
         
     def paint_accuracy_chart():
         
@@ -43,15 +58,29 @@ def model_page():
                 chart_model["accuracy"] = [model_training.accuracy * 100 for model_training in trained_models]
                 chart_model["loss"] = [model_training.loss for model_training in trained_models]
                 
-                line_data = {}
-                for model_training in trained_models:
-                    line_data[model_training.model_name] = model_training.training_loss
-                line_df = pd.DataFrame(line_data)
+                loss_data = {}
+                for model_training in [model for model in trained_models if len(model_training.training_loss) > 0]:
+                    loss_data[model_training.model_name] = model_training.training_loss
+                    loss_data[model_training.model_name] = reduce_list_length(loss_data[model_training.model_name], 10)
+                loss_df = pd.DataFrame(loss_data)
                 
                 acc_data = {}
-                for model_training in trained_models:
+                for model_training in [model for model in trained_models if len(model_training.training_accuracy) > 0]:
                     acc_data[model_training.model_name] = [acc * 100 for acc in model_training.training_accuracy]
+                    acc_data[model_training.model_name] = reduce_list_length(acc_data[model_training.model_name], 10)
                 acc_df = pd.DataFrame(acc_data)
+                
+                val_loss_data = {}
+                for model_training in [model for model in trained_models if len(model_training.validation_loss) > 0]:
+                    val_loss_data[model_training.model_name] = model_training.validation_loss
+                    val_loss_data[model_training.model_name] = reduce_list_length(val_loss_data[model_training.model_name], 10)
+                val_loss_df = pd.DataFrame(val_loss_data)
+                
+                val_acc_data = {}
+                for model_training in [model for model in trained_models if len(model_training.validation_accuracy) > 0]:
+                    val_acc_data[model_training.model_name] = [acc * 100 for acc in model_training.validation_accuracy]
+                    val_acc_data[model_training.model_name] = reduce_list_length(val_acc_data[model_training.model_name], 10)
+                val_acc_df = pd.DataFrame(val_acc_data)
                 
                 # Create accuracy chart
                 fig_accuracy = px.bar(chart_model, x="model_name", 
@@ -72,7 +101,7 @@ def model_page():
                                                labels={"loss": "Loss", "model_name": "Model"})
                 ui.plotly(fig_loss)
                 
-                fig_training_loss = px.line(line_df, y=line_df.columns[1:], 
+                fig_training_loss = px.line(loss_df, y=loss_df.columns, 
                                             title="Model Training Loss",
                                             labels={"index": "Epoch", "value": "Loss", "variable": "Model"})
                 fig_training_loss.update_layout(
@@ -81,7 +110,7 @@ def model_page():
                 
                 ui.plotly(fig_training_loss)
                 
-                fig_training_accuracy = px.line(acc_df, y=acc_df.columns[1:], 
+                fig_training_accuracy = px.line(acc_df, y=acc_df.columns, 
                                                 range_y=[0, 100],
                                                 title="Model Training Accuracy",
                                                 labels={"index": "Epoch", "value": "Accuracy", "variable": "Model"})
@@ -90,7 +119,7 @@ def model_page():
                 )
                 ui.plotly(fig_training_accuracy)
 
-                fig_validation_loss = px.line(line_df, y=line_df.columns[1:], 
+                fig_validation_loss = px.line(val_loss_df, y=val_loss_df.columns, 
                                                 title="Model Validation Loss",
                                                 labels={"index": "Epoch", "value": "Loss", "variable": "Model"})
                 fig_validation_loss.update_layout(
@@ -98,7 +127,7 @@ def model_page():
                 )
                 ui.plotly(fig_validation_loss)
 
-                fig_validation_accuracy = px.line(acc_df, y=acc_df.columns[1:], 
+                fig_validation_accuracy = px.line(val_acc_df, y=val_acc_df.columns, 
                                                 range_y=[0, 100],
                                                 title="Model Validation Accuracy",
                                                 labels={"index": "Epoch", "value": "Accuracy", "variable": "Model"})
@@ -141,9 +170,14 @@ def kaggle_page():
     def load_data():
         path = kagglehub.dataset_download("shawngano/gano-cat-breed-image-collection") 
 
-        # Copy data to local folder
-        local_path = os.path.join(os.path.dirname(__file__), "data")
-        shutil.rmtree(local_path)
+        # Copy data to local folder using a relative path
+        local_path = "./data"
+        
+        # Check if directory exists before removing it
+        if os.path.exists(local_path):
+            shutil.rmtree(local_path)
+        
+        # Copy the data (this will create the directory)
         shutil.copytree(path, local_path)  
         path = local_path 
 
@@ -152,8 +186,6 @@ def kaggle_page():
         app_state.class_names = [pathname for pathname in os.listdir(cat_pathname) if os.path.isdir(os.path.join(cat_pathname, pathname))]
         app_state.save()
         ui.notify("Data loaded", color="positive")
-        
-        paint_class_select.refresh()
         
     @ui.refreshable
     def paint_class_select():

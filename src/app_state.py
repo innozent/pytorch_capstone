@@ -3,7 +3,7 @@ import pickle
 from typing import Callable
 import os
 class ModelTraining:
-    def __init__(self, model_name: str, model_file_name: str, get_model_function: Callable):
+    def __init__(self, model_name: str, model_file_name: str, get_model_function: Callable, learning_rate: float, epochs: int):
         self.training_loss = []
         self.training_accuracy = []
         self.validation_loss = []
@@ -14,6 +14,8 @@ class ModelTraining:
         self.get_model_function : Callable = get_model_function
         self.accuracy : float = None
         self.loss : float = None
+        self.learning_rate : float = learning_rate
+        self.epochs : int = epochs
     
     def get_accuracy(self) -> float:
         return self.validation_accuracy[-1] if len(self.validation_accuracy) > 0 else 0

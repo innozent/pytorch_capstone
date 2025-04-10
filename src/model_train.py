@@ -56,19 +56,18 @@ class CatBreedClassifier(nn.Module):
             torch.nn.Conv2d(256, 512, kernel_size=3, stride=1, padding=1),
             torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size=2, stride=2),  # Output: 512 x 14 x 14
-            torch.nn.Conv2d(512, 512, kernel_size=3, stride=1, padding=1),  # Changed from 1024 to 512
+            torch.nn.Conv2d(512, 1024, kernel_size=3, stride=1, padding=1),  # Changed from 1024 to 512
             torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=2, stride=2)   # Output: 512 x 7 x 7
+            torch.nn.MaxPool2d(kernel_size=2, stride=2)   # Output: 1024 x 7 x 7
         )
         
         # Calculate the flattened size: 512 channels * 7 * 7 = 25088
         self.fc_block = torch.nn.Sequential(
             torch.nn.Flatten(),
-            torch.nn.Linear(512 * 7 * 7, 512),  # Adjusted input size
+            torch.nn.Linear(1024 * 7 * 7, 512),  # Adjusted input size
             torch.nn.ReLU(),
             torch.nn.Dropout(0.5),
             torch.nn.Linear(512, 15),  # 15 breeds
-            torch.nn.LogSoftmax(dim=1)
         )
         
         
@@ -82,10 +81,10 @@ def initial_model_training(existing_model_trainings: list[ModelTraining] | None)
         existing_model_trainings = []
         
     model_trainings = [
-        ModelTraining(Models.ClassificationModel, "classification_model.pth", get_classification_model),
-        ModelTraining(Models.ResNetModel, "resnet_model.pth", get_resnet_model),
-        ModelTraining(Models.EfficientNetModel, "efficientnet_model.pth", get_efficient_net_model),
-        ModelTraining(Models.VGGModel, "vgg_model.pth", get_vgg_model)
+        ModelTraining(Models.ClassificationModel, "classification_model.pth", get_classification_model, 0.01, epochs=20),
+        ModelTraining(Models.ResNetModel, "resnet_model.pth", get_resnet_model, 0.001, epochs=10),
+        ModelTraining(Models.EfficientNetModel, "efficientnet_model.pth", get_efficient_net_model, 0.001, epochs=10),
+        ModelTraining(Models.VGGModel, "vgg_model.pth", get_vgg_model, 0.001, epochs=10)
     ]
     
     for model_training in model_trainings:
@@ -137,7 +136,7 @@ def get_vgg_model() -> nn.Module:
     vgg_model.classifier[6] = nn.Linear(vgg_model.classifier[6].in_features, 15)
     return vgg_model
 
-def train_model(app_state,model: nn.Module, model_name: str) -> tuple[list[float], list[float], list[float], list[float], float]:
+def train_model(app_state,model: nn.Module, model_name: str, model_training: ModelTraining) -> tuple[list[float], list[float], list[float], list[float], float]:
     print(f"Training model on {app_state.device}")
     transform = get_transformation()
      
@@ -150,15 +149,15 @@ def train_model(app_state,model: nn.Module, model_name: str) -> tuple[list[float
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, [train_size, test_size])
     
     # Create data loaders for both sets
-    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=4)
-    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True, num_workers=8)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False, num_workers=8)
     
     print(f"Dataset split: {train_size} training samples, {test_size} test samples")
     
     print(f"Loading model")
     model.to(app_state.device)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
+    optimizer = optim.SGD(model.parameters(), lr=model_training.learning_rate, momentum=0.9)
     
     training_loss = []
     training_accuracy = []
@@ -166,7 +165,7 @@ def train_model(app_state,model: nn.Module, model_name: str) -> tuple[list[float
     validation_accuracy = []
     
     start_time = time.time()
-    for epoch in range(10):
+    for epoch in range(model_training.epochs):
         model.train()
         
         running_loss = 0.0
