@@ -10,6 +10,7 @@ from nicegui import ui, run
 from src.app_state import app_state, Question, ModelTraining
 from src.open_router import open_router
 from src.model_train import train_model, infer_model, grad_cam, Models
+from torchvision.datasets import ImageFolder
 
 def model_page(): 
     async def on_train_model(model_training: ModelTraining): 
@@ -183,7 +184,11 @@ def kaggle_page():
 
         cat_pathname = os.path.join(path, os.listdir(path)[0])
         app_state.image_path = cat_pathname
-        app_state.class_names = [pathname for pathname in os.listdir(cat_pathname) if os.path.isdir(os.path.join(cat_pathname, pathname))]
+        
+        image_folder = ImageFolder(cat_pathname)
+        
+        # app_state.class_names =  [pathname for pathname in os.listdir(cat_pathname) if os.path.isdir(os.path.join(cat_pathname, pathname))]
+        app_state.class_names = image_folder.classes
         app_state.save()
         ui.notify("Data loaded", color="positive")
         

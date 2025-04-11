@@ -7,6 +7,7 @@ import numpy as np
 import torchvision
 import torchvision.transforms as transforms
 import torch.nn.functional as F
+from torchvision.datasets import ImageFolder
 from PIL import Image
 from torch.utils.data import Dataset, DataLoader
 from src.app_state import ModelTraining, Question, AppState
@@ -141,7 +142,8 @@ def train_model(app_state,model: nn.Module, model_name: str, model_training: Mod
     transform = get_transformation()
      
     print(f"Loading dataset")
-    dataset = get_cat_breed_dataset(app_state, transform)
+    # dataset = get_cat_breed_dataset(app_state, transform)
+    dataset = ImageFolder(app_state.image_path, transform=transform)
     
     # Split dataset into train and test sets (80% train, 20% test)
     train_size = int(0.8 * len(dataset))
