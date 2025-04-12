@@ -109,10 +109,9 @@
         \column{0.48\textwidth}
         \textbf{\textcolor{maincolor}{Transfer Learning Models:}}
         \begin{itemize}
-            \item ResNet18
-            \item EfficientNetB2
-            \item VGG16
-            \item All pre-trained with ImageNet weights
+            \item ResNet18 (ImageNet)
+            \item EfficientNetB2 (ImageNet)
+            \item VGG16 (ImageNet)
         \end{itemize}
     \end{columns}
 \end{frame}
@@ -127,15 +126,15 @@
             \hline
             \textbf{\textcolor{maincolor}{VGG16}} & \textbf{\textcolor{maincolor}{ResNet18}} & \textbf{\textcolor{maincolor}{EfficientNetB2}} \\
             \hline
-            \textbf{Parameters:} 138M & \textbf{Parameters:} 11.7M & \textbf{Parameters:} 9.2M \\
+            \textbf{Parameters:} 138.3M & \textbf{Parameters:} 11.7M & \textbf{Parameters:} 9.1M \\
             \hline
-            \textbf{Layers:} 16 & \textbf{Layers:} 18 & \textbf{Layers:} 82 \\
+            \textbf{Layers:} 13 Conv, 3 FC & \textbf{Layers:} 17 Conv, 1 FC & \textbf{Layers:} 35 Conv, 1 FC\\
             \hline
             \textbf{Key Features:} & \textbf{Key Features:} & \textbf{Key Features:} \\
-            - Simple architecture & - Residual blocks & - Compound scaling \\
-            - 3x3 convolutions & - Skip connections & - MBConv blocks \\
-            - Max pooling & - Batch normalization & - Swish activation  \\
-            - Dense layers & - Global average pooling & - Squeeze-and-excitation\\
+            \scriptsize{- Simple architecture} & \scriptsize{- Residual blocks} & \scriptsize{- Compound scaling} \\
+            \scriptsize{- 3x3 convolutions} & \scriptsize{- Skip connections} & \scriptsize{- MBConv blocks} \\
+            \scriptsize{- Max pooling} & \scriptsize{- Batch normalization} & \scriptsize{- Swish activation}  \\
+            \scriptsize{- Dense layers} & \scriptsize{- Global average pooling} & \scriptsize{- Squeeze-and-excitation}\\
             \hline
         \end{tabular}
     \end{table}
@@ -143,22 +142,30 @@
 
 \begin{frame}{Training Methodology}
     \begin{center}
-        \textbf{\textcolor{maincolor}{Consistent hyperparameters across all models:}}
+        \textbf{\textcolor{maincolor}{hyperparameters for all models:}}
     \end{center}
     \vspace{0.5cm}
     \begin{columns}[T]
         \column{0.48\textwidth}
         \begin{itemize}
             \item Batch size: 128
-            \item Learning rate: 0.001
             \item Momentum: 0.9
+            \item Learning rate: 
+            \begin{itemize}
+                \item 0.01 (Custom CNN) 
+                \item 0.001 (Other models)
+            \end{itemize}
         \end{itemize}
         
         \column{0.48\textwidth}
         \begin{itemize}
-            \item Epochs: 5
             \item Loss function: Cross Entropy
             \item Optimizer: SGD
+            \item Epochs: 
+            \begin{itemize}
+                \item 20 (Custom CNN) 
+                \item 10 (Other models)
+            \end{itemize}
         \end{itemize}
     \end{columns}
 \end{frame}
@@ -166,12 +173,9 @@
 \begin{frame}{Results and Evaluation}
     % Placeholder for image - uncomment when file is available
     \begin{center}
-        \includegraphics[width=0.65\textwidth]{models.png}
+        \includegraphics[width=0.7\textwidth]{eval2.png}
+        \includegraphics[width=0.7\textwidth]{eval3.png}
     \end{center} 
-    \begin{itemize}
-        \item Comparison of model accuracy and loss
-        \item Interactive quiz implementation for human vs AI performance analysis
-    \end{itemize}
 \end{frame}
 
 \begin{frame}{Visualization and Interpretability}
@@ -223,24 +227,27 @@
     \end{columns}
 \end{frame}
 
-\begin{frame}{Future Improvements}
-    \begin{block}{Potential Enhancements}
-        \begin{itemize}
-            \item User management system to track quiz performance over time
-            \item Enhanced data augmentation techniques for better generalization
-            \item Additional model architectures for comparison
-            \item More comprehensive evaluation metrics beyond accuracy
-            \item Fine-tuning of transfer learning models
-        \end{itemize}
-    \end{block}
-\end{frame}
+% \begin{frame}{Future Improvements}
+%     \begin{block}{Potential Enhancements}
+%         \begin{itemize}
+%             \item User management system to track quiz performance over time
+%             \item Enhanced data augmentation techniques for better generalization
+%             \item Additional model architectures for comparison
+%             \item More comprehensive evaluation metrics beyond accuracy
+%             \item Fine-tuning of transfer learning models
+%         \end{itemize}
+%     \end{block}
+% \end{frame}
 
 \begin{frame}{Conclusion}
+    \begin{center}
+    \includegraphics[width=0.7\textwidth]{conclusion.png}
+    \end{center}
     \begin{itemize}
-        \item \textbf{ChatGPT-4o-mini} demonstrates superior accuracy due to advanced image understanding capabilities
-        \item \textbf{Transfer learning models} perform moderately well with limited training
-        \item \textbf{Custom CNN model} shows potential but requires more extensive training
-        \item \textbf{Visualization tools} provide valuable insights into model decision-making
+        \item \textbf{VGG16 Model} is the best model based on confusion matrix and accuracy score.
+        \item \textbf{ResNet18 Model} the second best model, on the other hand, has a smaller number of parameters (11.7 Million parameters)
+        \item \textbf{EfficientNet B2} has 9.1 Million parameters and slightly lower accuracy compared to VGG16 and ResNet18 on this dataset.
+        \item \textbf{ChatGPT-4o-mini} which is a multi-modal model, has image recognition capabilities and has very good accuracy rate.
     \end{itemize}
     
     \vspace{0.5cm}

@@ -83,6 +83,10 @@ def model_page():
                     val_acc_data[model_training.model_name] = reduce_list_length(val_acc_data[model_training.model_name], 10)
                 val_acc_df = pd.DataFrame(val_acc_data)
                 
+                time_data = {}
+                for model_training in trained_models:
+                    time_data[model_training.model_name] = model_training.training_time
+                
                 # Create accuracy chart
                 fig_accuracy = px.bar(chart_model, x="model_name", 
                                                    y="accuracy", 
@@ -136,6 +140,14 @@ def model_page():
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
                 )
                 ui.plotly(fig_validation_accuracy)
+                
+                
+                fig_training_time = px.bar(x=time_data.keys(), y=time_data.values(),  
+                                            title="Training Time (seconds)",
+                                            color=time_data.values(),
+                                            color_continuous_scale=["green","yellow", "red"],
+                                            labels={"x": "Model", "y": "Training Time", "color": "Training Time"})
+                ui.plotly(fig_training_time)
         
 
     with ui.grid().classes("gap-2 md:gap-4 grid-cols-2 md:grid-cols-4"): 

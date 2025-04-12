@@ -63,7 +63,7 @@
 \maketitle
 
 \section{Introduction}
-This project is to study on using PyTorch model to classify cat images. It implements Grad-CAM to visualized the attention of the model on one of CNN layers. ChatGPT-4o-mini is used to identify the image and given the rationale of result. Quiz is implemented to show the accuracy of each model along with human accuracy.
+This project is to study on using PyTorch model to classify cat images. It implements Grad-CAM to visualized the attention of the model on one of CNN layers. ChatGPT-4o-mini is integrated to classify cat images and given the rationale of its result. Quiz is implemented to show the accuracy of each model along with human accuracy.
 
 Github: \href{https://github.com/innozent/pytorch_capstone}{https://github.com/innozent/pytorch\_capstone}
 
@@ -123,12 +123,23 @@ Github: \href{https://github.com/innozent/pytorch_capstone}{https://github.com/i
     \item Quiz is implemented to show the accuracy of each model along with human accuracy and ChatGPT-4o-mini accuracy.
 \end{itemize}
 
+
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{models.png}
+    \includegraphics[width=0.80\textwidth]{eval4.png} 
+    \caption{Comparison of training time}
+    \label{fig:training_time}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{eval1.png}
+    \includegraphics[width=\textwidth]{eval2.png}
+    \includegraphics[width=\textwidth]{eval3.png}
     \caption{Comparison of model accuracy and loss}
     \label{fig:models}
 \end{figure}
+
 
 \section{Visualization and Interpretability}
 \begin{itemize}
@@ -168,10 +179,27 @@ Github: \href{https://github.com/innozent/pytorch_capstone}{https://github.com/i
 \end{itemize}
 
 \section{Conclusion}
+\begin{table}[H]
+    \centering
+    \begin{tabular}{lrrrr}
+    \toprule
+    \textbf{Model} & \textbf{Parameters} & \textbf{Accuracy} & \textbf{Loss} & \textbf{Training Time (s)} \\
+    \midrule
+    Custom CNN Model & 31.9M & 42\% & 1.86 & 2,698 \\
+    EfficientNet Model & 9.1M & 71\% & 1.40 & 1,256 \\
+    ResNet Model & 11.7M & 73\% & 0.99 & 2,357 \\
+    VGG Model & 138.3M & 76\% & 0.81 & 1,314 \\
+    \bottomrule
+    \end{tabular}
+    \caption{Comparison of model performance metrics}
+    \label{tab:model_comparison}
+\end{table}
+
 \begin{itemize}
-    \item ChatGPT-4o-mini is able to classify the image with high accuracy due to its ability to understand the image and choices of quiz provided.
-    \item PyTorch models from Transfer Learning are able to classify the image with moderate accuracy.
-    \item CNN models are not able to classify the image with high accuracy due to very limited training epochs and architecture.
+    \item VGG16 Model is the best model based on confusion matrix and accuracy score, but it contains a very large number of parameters (138 Million parameters).
+    \item ResNet18 Model, on the other hand, has a smaller number of parameters (11.7 Million parameters) and nearly the same performance as VGG16.
+    \item EfficientNet B2 has 9.1 Million parameters and slightly lower accuracy compared to VGG16 and ResNet18 on this dataset.
+    \item ChatGPT-4o-mini, which is a multi-modal model, has image recognition capabilities. It can be used for cat image classification and provides rationale for its predictions.
 \end{itemize}
 
 \end{document}
